@@ -1,8 +1,11 @@
-import { User, TradingSession } from '../types';
+import { User, TradingSession, Trade, BBTCalculation } from '../types';
 
 const USERS_STORAGE_KEY = 'bbt_trades_users';
 const SESSIONS_STORAGE_KEY = 'bbt_trades_sessions';
+const TRADES_STORAGE_KEY = 'bbt_trades_trades';
+const BBT_CALCULATIONS_KEY = 'bbt_trades_calculations';
 const CURRENT_USER_KEY = 'bbt_trades_current_user';
+const SESSION_EXPIRY_KEY = 'bbt_trades_session_expiry';
 
 export const storageUtils = {
   // User storage methods
@@ -71,13 +74,91 @@ export const storageUtils = {
     }
   },
 
+  // Trade storage methods
+  getTrades: (): Trade[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const trades = localStorage.getItem(TRADES_STORAGE_KEY);
+      return trades ? JSON.parse(trades) : [];
+    } catch (error) {
+      console.error('Error getting trades from storage:', error);
+      return [];
+    }
+  },
+
+  saveTrades: (trades: Trade[]): void => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(trades));
+    } catch (error) {
+      console.error('Error saving trades to storage:', error);
+    }
+  },
+
+  // BBT Calculations storage methods
+  getBBTCalculations: (): BBTCalculation[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const calculations = localStorage.getItem(BBT_CALCULATIONS_KEY);
+      return calculations ? JSON.parse(calculations) : [];
+    } catch (error) {
+      console.error('Error getting BBT calculations from storage:', error);
+      return [];
+    }
+  },
+
+  saveBBTCalculations: (calculations: BBTCalculation[]): void => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(BBT_CALCULATIONS_KEY, JSON.stringify(calculations));
+    } catch (error) {
+      console.error('Error saving BBT calculations to storage:', error);
+    }
+  },
+
+  // Session expiry methods
+  setSessionExpiry: (expiryTime: number): void => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(SESSION_EXPIRY_KEY, expiryTime.toString());
+    } catch (error) {
+      console.error('Error setting session expiry:', error);
+    }
+  },
+
+  getSessionExpiry: (): number | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const expiry = localStorage.getItem(SESSION_EXPIRY_KEY);
+      return expiry ? parseInt(expiry) : null;
+    } catch (error) {
+      console.error('Error getting session expiry:', error);
+      return null;
+    }
+  },
+
+  isSessionExpired: (): boolean => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const expiry = storageUtils.getSessionExpiry();
+      if (!expiry) return false;
+      return Date.now() > expiry;
+    } catch (error) {
+      console.error('Error checking session expiry:', error);
+      return false;
+    }
+  },
+
   // Utility methods
   clearAllData: (): void => {
     if (typeof window === 'undefined') return;
     try {
       localStorage.removeItem(USERS_STORAGE_KEY);
       localStorage.removeItem(SESSIONS_STORAGE_KEY);
+      localStorage.removeItem(TRADES_STORAGE_KEY);
+      localStorage.removeItem(BBT_CALCULATIONS_KEY);
       localStorage.removeItem(CURRENT_USER_KEY);
+      localStorage.removeItem(SESSION_EXPIRY_KEY);
     } catch (error) {
       console.error('Error clearing storage:', error);
     }

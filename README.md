@@ -1,24 +1,58 @@
-# BBT Trades - Trading Performance Tracker
+# BBT Trades - Advanced Trading Performance Tracker & Analytics Platform
 
-A modern, responsive web application for crypto and finance professionals to track trading performance and manage trading sessions.
+A modern, responsive web application for crypto and finance professionals to track trading performance, manage trading sessions, and access advanced BBT analytics with real-time market insights.
 
-## Features
+## ✨ Features
 
-- **User Authentication**: Local registration and login with password validation
-- **Trading Sessions**: Create and manage trading sessions with detailed metrics
-- **Dashboard**: Real-time statistics showing total, active, and completed sessions
-- **Session Management**: Update session status and delete sessions
-- **Responsive Design**: Mobile-friendly interface built with Tailwind CSS
-- **Error Handling**: Comprehensive error handling with user-friendly notifications
+### 🔐 Authentication & Security
+- **Local Authentication**: Secure registration and login with robust password validation
+- **Session Management**: 30-minute session expiry with automatic logout
+- **Password Requirements**: 8+ characters with uppercase, lowercase, numbers, and special characters
 
-## Tech Stack
+### 📊 Enhanced Dashboard
+- **User Insights**: Welcome greeting with personalized trading metrics
+- **BBT Analytics**: Recent BBT calculations with position size, risk-reward, and compound interest tools
+- **Market Charts**: Interactive crypto price charts with 7-day trend data for BBT, BTC, ETH, and more
+- **Real-time Statistics**: Total trades, profit/loss percentage, active investment, and session metrics
+- **Quick Actions**: Fast access to trade tracking and session creation
+
+### 💹 Advanced Trade Tracking
+- **Complete CRUD Operations**: Add, edit, view, and delete trading records
+- **Auto-calculation**: Automatic profit/loss calculation for buy/sell trades
+- **Interactive Trade History**: Sortable and filterable table with pagination
+- **Search & Filter**: Find trades by pair name, filter by profit/loss status
+- **Color-coded Results**: Green for profits, red for losses with percentage indicators
+- **Trade Analytics**: Comprehensive statistics with profit percentages and investment tracking
+
+### 🎯 Trading Sessions
+- **Session Management**: Create and manage trading sessions with detailed metrics
+- **Performance Tracking**: Monitor capital, trades, accuracy, and risk-reward ratios
+- **Status Control**: Toggle between active and completed sessions
+- **Session Analytics**: View total, active, and completed session statistics
+
+### 📈 Market Insights (Mock Data Ready for API Integration)
+- **Multi-asset Charts**: BBT, Bitcoin, Ethereum, and other major cryptocurrencies
+- **Price Trends**: 7-day price movement with interactive line charts
+- **Market Data**: Real-time price updates with 24h change indicators
+- **Analytics Dashboard**: Market insights and trend analysis
+
+### 🎨 Modern UI/UX
+- **Responsive Design**: Mobile-first design with Tailwind CSS
+- **Smooth Animations**: Framer Motion animations for enhanced user experience
+- **Interactive Components**: Hover effects, loading states, and smooth transitions
+- **Professional Layout**: Clean, organized interface with intuitive navigation
+
+## 🛠️ Tech Stack
 
 - **Framework**: Next.js 14 with App Router
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
+- **Animations**: Framer Motion
+- **Charts**: Recharts
 - **Icons**: Lucide React
 - **State Management**: React Context API
-- **Storage**: Local Storage (for development)
+- **Storage**: Local Storage (development) / MongoDB (production ready)
+- **Date Handling**: date-fns
 
 ## Getting Started
 
@@ -54,96 +88,132 @@ npm run build
 npm start
 ```
 
-## Usage
+## 🚀 Usage Guide
 
-### Authentication
+### 🔐 Authentication
+1. **Register**: Create account with name, email, and secure password
+2. **Login**: Access your personalized dashboard
+3. **Session Security**: Auto-logout after 30 minutes of inactivity
 
-1. **Register a new account**:
-   - Navigate to the registration page
-   - Enter your name, email, and password
-   - Password must meet the following requirements:
-     - At least 8 characters
-     - One uppercase letter
-     - One lowercase letter
-     - One number
-     - One special character
+### 📊 Enhanced Dashboard
+- **Overview**: View total trades, profit/loss %, active investment, and sessions
+- **BBT Calculations**: Access recent calculations (position size, risk-reward, compound interest)
+- **Market Charts**: Analyze 7-day price trends for BBT, BTC, ETH, and other cryptocurrencies
+- **Quick Actions**: Fast access to add trades and create sessions
 
-2. **Login**:
-   - Use your registered email and password
-   - You'll be redirected to the dashboard upon successful login
+### 💹 Trade Tracking System
+1. **Add New Trade**:
+   - Click "Add Trade" from dashboard or trades page
+   - Enter trading pair (e.g., BTC/USDT)
+   - Select trade type (Buy/Long or Sell/Short)
+   - Input entry price, exit price, and investment amount
+   - Set trade date
+   - View real-time profit/loss preview
 
-### Managing Trading Sessions
+2. **Manage Trades**:
+   - **View All Trades**: Navigate to trades page for complete history
+   - **Search & Filter**: Find trades by pair name or filter by profit/loss
+   - **Sort**: Order by date, pair name, or profit amount
+   - **Edit**: Update trade details with recalculated P&L
+   - **Delete**: Remove trades with confirmation
 
-1. **Create a Session**:
-   - Click "New Session" on the dashboard
-   - Fill in the session details:
-     - Session name
-     - Starting capital
-     - Total trades
-     - Accuracy percentage
-     - Risk-reward ratio
-     - Status (Active or Completed)
+3. **Trade Analytics**:
+   - View total trades, profit, loss, and percentage returns
+   - Color-coded profit (green) and loss (red) indicators
+   - Pagination for large trade histories (10 trades per page)
 
-2. **View Sessions**:
-   - All sessions are displayed in a table format
-   - View key metrics like capital, trades, accuracy, and R:R ratio
+### 🎯 Trading Sessions
+1. **Create Sessions**: Set up trading periods with capital, trade count, accuracy, and R:R ratio
+2. **Monitor Performance**: Track active vs completed sessions
+3. **Session Management**: Toggle status and delete sessions as needed
 
-3. **Manage Sessions**:
-   - Click the three-dot menu on any session to:
-     - Toggle between Active and Completed status
-     - Delete the session
+### 📈 Market Insights
+- **Real-time Charts**: Interactive price charts with 7-day historical data
+- **Multi-asset Support**: BBT, Bitcoin, Ethereum, BNB, ADA, SOL, MATIC, DOT
+- **Price Analytics**: 24h change indicators and trend analysis
+- **Market Selector**: Switch between different cryptocurrencies
 
-### Dashboard Statistics
-
-The dashboard displays three key metrics:
-- **Total Sessions**: All sessions created
-- **Active Sessions**: Currently running sessions
-- **Completed Sessions**: Finished sessions
+### 🔄 API Integration Points
+The application is designed with clear separation for future API integration:
+- **BBT Calculations**: Replace mock data with real BBT API endpoints
+- **Market Data**: Connect to CoinGecko, Binance, or other crypto data providers
+- **User Data**: Migration path to MongoDB or other databases
+- **Real-time Updates**: WebSocket support for live market data
 
 ## Project Structure
 
 ```
 app/
 ├── components/          # Reusable UI components
-│   ├── Header.tsx      # Navigation header
-│   ├── LoadingSpinner.tsx
-│   ├── StatCard.tsx    # Statistics display cards
-│   └── Toast.tsx       # Notification system
+│   ├── BBTCalculationsWidget.tsx  # BBT calculations display
+│   ├── Header.tsx              # Navigation header with routing
+│   ├── LoadingSpinner.tsx      # Loading states
+│   ├── MarketChart.tsx         # Interactive crypto price charts
+│   ├── StatCard.tsx            # Enhanced statistics cards
+│   └── Toast.tsx               # Notification system
 ├── context/            # React Context providers
-│   ├── AuthContext.tsx # Authentication state
-│   └── SessionContext.tsx # Session management
-├── dashboard/          # Dashboard page
+│   ├── AuthContext.tsx         # Authentication with session expiry
+│   ├── SessionContext.tsx      # Trading session management
+│   └── TradeContext.tsx        # Trade tracking and analytics
+├── dashboard/          # Enhanced dashboard with analytics
+├── trades/            # Complete trade tracking system
 ├── login/             # Login page
 ├── register/          # Registration page
 ├── types/             # TypeScript type definitions
 ├── utils/             # Utility functions
-│   ├── storage.ts     # Local storage utilities
-│   └── validation.ts  # Form validation
-├── globals.css        # Global styles
-├── layout.tsx         # Root layout
-└── page.tsx          # Home page (redirects)
+│   ├── storage.ts     # Extended storage utilities
+│   ├── validation.ts  # Form validation
+│   └── mockData.ts    # Mock data generators for development
+├── globals.css        # Global styles with animations
+├── layout.tsx         # Root layout with providers
+└── page.tsx          # Home page routing
 ```
 
-## Data Storage
+## 💾 Data Storage
 
-Currently, the application uses browser localStorage for data persistence:
-- **Users**: Stored in `bbt_trades_users`
-- **Sessions**: Stored in `bbt_trades_sessions`
-- **Current User**: Stored in `bbt_trades_current_user`
+### Current Implementation (Development)
+Browser localStorage with structured data management:
+- **Users**: `bbt_trades_users` - User accounts and authentication
+- **Sessions**: `bbt_trades_sessions` - Trading session data
+- **Trades**: `bbt_trades_trades` - Individual trade records
+- **BBT Calculations**: `bbt_trades_calculations` - Calculation history
+- **Current User**: `bbt_trades_current_user` - Active user session
+- **Session Expiry**: `bbt_trades_session_expiry` - Security timeout
 
-## Future Enhancements
+### Production Ready Features
+- **Session Security**: 30-minute auto-expiry with background monitoring
+- **Data Validation**: Comprehensive input validation and error handling
+- **State Management**: Centralized context providers for scalable state
+- **API Hooks**: Pre-built integration points for backend services
 
-The application is designed to be easily extensible with:
-- Real database integration (MongoDB)
-- External authentication providers
-- Live crypto data integration
-- Additional calculators:
-  - Profit/Loss calculator
-  - Position size calculator
-  - Compounding calculator
-  - Risk management tools
-- Advanced analytics and reporting
-- Export functionality (CSV, PDF)
+## 🚀 Future Enhancements
+
+### Immediate API Integration Points
+```typescript
+// TODO: Connect BBT API here
+const bbtCalculations = await fetchBBTCalculations(userId);
+
+// TODO: Connect crypto data streaming
+const marketData = await fetchMarketData(symbol);
+
+// TODO: Replace with real database
+const trades = await api.getTrades(userId);
+```
+
+### Planned Features
+- **Real Database**: MongoDB integration with user data migration
+- **Live Market Data**: WebSocket connections for real-time crypto prices
+- **External Auth**: OAuth integration (Google, GitHub, etc.)
+- **Advanced Analytics**:
+  - Portfolio performance tracking
+  - Risk assessment tools
+  - Custom indicators and signals
+- **Additional Calculators**:
+  - Advanced position sizing
+  - Portfolio rebalancing
+  - Tax calculation tools
+- **Export Features**: CSV, PDF, and Excel export functionality
+- **Mobile App**: React Native version for iOS/Android
 
 ## Error Handling
 

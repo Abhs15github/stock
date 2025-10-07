@@ -5,7 +5,7 @@ interface StatCardProps {
   title: string;
   value: number;
   icon: LucideIcon;
-  color: 'blue' | 'green' | 'orange' | 'purple';
+  color: 'blue' | 'green' | 'orange' | 'purple' | 'red';
   subtitle?: string;
 }
 
@@ -20,6 +20,8 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, co
         return 'border-orange-500 bg-orange-50';
       case 'purple':
         return 'border-purple-500 bg-purple-50';
+      case 'red':
+        return 'border-red-500 bg-red-50';
       default:
         return 'border-blue-500 bg-blue-50';
     }
@@ -35,6 +37,8 @@ export const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, co
         return 'text-orange-600';
       case 'purple':
         return 'text-purple-600';
+      case 'red':
+        return 'text-red-600';
       default:
         return 'text-blue-600';
     }

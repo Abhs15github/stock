@@ -21,14 +21,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      const currentUser = storageUtils.getCurrentUser();
-      setUser(currentUser);
+      // Check if session is expired
+      if (storageUtils.isSessionExpired()) {
+        storageUtils.setCurrentUser(null);
+        setUser(null);
+      } else {
+        const currentUser = storageUtils.getCurrentUser();
+        setUser(currentUser);
+      }
     } catch (error) {
       console.error('Error loading current user:', error);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  // Check session expiry every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (user && storageUtils.isSessionExpired()) {
+        setUser(null);
+        storageUtils.setCurrentUser(null);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   const register = async (email: string, password: string, name: string): Promise<{ success: boolean; message: string }> => {
     try {
@@ -75,6 +93,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(userToStore);
       storageUtils.setCurrentUser(userToStore);
 
+      // Set session expiry (30 minutes from now)
+      const expiryTime = Date.now() + (30 * 60 * 1000);
+      storageUtils.setSessionExpiry(expiryTime);
+
       return { success: true, message: 'Registration successful' };
     } catch (error) {
       console.error('Registration error:', error);
@@ -110,6 +132,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Set current user
       setUser(foundUser);
       storageUtils.setCurrentUser(foundUser);
+
+      // Set session expiry (30 minutes from now)
+      const expiryTime = Date.now() + (30 * 60 * 1000);
+      storageUtils.setSessionExpiry(expiryTime);
 
       return { success: true, message: 'Login successful' };
     } catch (error) {
