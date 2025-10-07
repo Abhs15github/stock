@@ -39,6 +39,8 @@ export const BBTCalculationsWidget: React.FC = () => {
         return BarChart3;
       case 'profit-loss':
         return DollarSign;
+      case 'entry-exit':
+        return Target;
       default:
         return Calculator;
     }
@@ -54,23 +56,29 @@ export const BBTCalculationsWidget: React.FC = () => {
         return 'Compound Interest';
       case 'profit-loss':
         return 'Profit/Loss';
+      case 'entry-exit':
+        return 'Entry/Exit';
       default:
         return type;
     }
   };
 
   const formatResult = (calculation: BBTCalculation) => {
+    const result = typeof calculation.result === 'number' ? calculation.result : calculation.result.primary;
+
     switch (calculation.calculationType) {
       case 'position-size':
-        return `${calculation.result.toFixed(0)} shares`;
+        return `${result.toFixed(0)} BBT`;
       case 'risk-reward':
-        return `1:${calculation.result.toFixed(2)}`;
+        return `1:${result.toFixed(2)}`;
       case 'compound':
-        return `$${calculation.result.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+        return `$${result.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
       case 'profit-loss':
-        return `$${calculation.result.toFixed(2)}`;
+        return `$${result.toFixed(2)}`;
+      case 'entry-exit':
+        return `$${result.toFixed(6)}`;
       default:
-        return calculation.result.toString();
+        return result.toString();
     }
   };
 

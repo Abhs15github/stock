@@ -71,10 +71,41 @@ export interface TradeContextType {
 export interface BBTCalculation {
   id: string;
   userId: string;
-  calculationType: 'position-size' | 'risk-reward' | 'compound' | 'profit-loss';
+  calculationType: 'position-size' | 'risk-reward' | 'compound' | 'profit-loss' | 'entry-exit';
   inputs: Record<string, number>;
-  result: number;
+  result: number | BBTCalculationResult;
   createdAt: string;
+}
+
+export interface BBTCalculationResult {
+  primary: number;
+  secondary?: number;
+  recommendation?: string;
+  riskLevel?: 'low' | 'medium' | 'high';
+  details?: Record<string, number | string>;
+}
+
+export interface BBTMarketData {
+  price: number;
+  change24h: number;
+  changePercentage24h: number;
+  volume24h: number;
+  marketCap: number;
+  support: number;
+  resistance: number;
+  trend: 'bullish' | 'bearish' | 'neutral';
+  rsi: number;
+  volatility: number;
+}
+
+export interface TradeRecommendation {
+  action: 'buy' | 'sell' | 'hold' | 'wait';
+  confidence: 'low' | 'medium' | 'high';
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  riskReward: number;
+  reasoning: string[];
 }
 
 export interface MarketData {

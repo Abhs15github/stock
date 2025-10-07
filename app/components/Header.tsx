@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
-import { TrendingUp, LogOut, User, Home, Target } from 'lucide-react';
+import { TrendingUp, LogOut, User, Home, Target, Calculator } from 'lucide-react';
 import Link from 'next/link';
 
 export const Header: React.FC = () => {
@@ -14,6 +14,7 @@ export const Header: React.FC = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'BBT Calculators', href: '/calculators', icon: Calculator },
     { name: 'Trades', href: '/trades', icon: Target },
   ];
 
