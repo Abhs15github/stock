@@ -141,16 +141,16 @@ export const BBTMarketAnalysis: React.FC = () => {
     >
       {/* Market Overview */}
       <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">BBT Market Analysis</h3>
-            <p className="text-sm text-gray-600">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">BBT Market Analysis</h3>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               Last updated: {lastUpdate.toLocaleTimeString()}
             </p>
           </div>
           <button
             onClick={loadMarketData}
-            className="btn-secondary text-sm"
+            className="btn-secondary text-sm flex-shrink-0"
             disabled={isLoading}
           >
             {isLoading ? 'Updating...' : 'Refresh'}
@@ -158,7 +158,7 @@ export const BBTMarketAnalysis: React.FC = () => {
         </div>
 
         {marketData && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
             {/* Current Price */}
             <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between">
@@ -409,11 +409,11 @@ export const BBTMarketAnalysis: React.FC = () => {
             <Zap className="w-6 h-6 text-yellow-500" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             {/* Market Signals */}
             <div className="space-y-4">
-              <h4 className="font-medium text-gray-900 flex items-center">
-                <Bell className="w-4 h-4 mr-2 text-blue-600" />
+              <h4 className="font-medium text-gray-900 flex items-center text-sm sm:text-base">
+                <Bell className="w-4 h-4 mr-2 text-blue-600 flex-shrink-0" />
                 Market Signals
               </h4>
 

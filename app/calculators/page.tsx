@@ -131,27 +131,29 @@ export default function CalculatorsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto py-3 sm:py-6 px-4 sm:px-6 lg:px-8">
+        <div className="sm:px-0">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="mb-8"
+            className="mb-6 sm:mb-8"
           >
-            <div className="flex items-center space-x-3 mb-4">
-              <Calculator className="w-8 h-8 text-primary-600" />
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-3 mb-4">
+              <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-primary-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">BBT Trading Calculators</h1>
-                <p className="text-gray-600">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                  BBT Trading Calculators
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600">
                   Professional tools to optimize your BBT trading decisions
                 </p>
               </div>
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
             {/* Calculator Navigation */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -159,9 +161,36 @@ export default function CalculatorsPage() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:col-span-1"
             >
-              <div className="card p-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Available Calculators</h3>
-                <nav className="space-y-2">
+              <div className="card p-3 sm:p-4">
+                <h3 className="font-semibold text-gray-900 mb-4 text-sm sm:text-base">
+                  Available Calculators
+                </h3>
+
+                {/* Mobile: Horizontal Scroll */}
+                <div className="lg:hidden">
+                  <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {calculatorTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveCalculator(tab.id)}
+                          className={`flex flex-col items-center p-3 rounded-lg text-center transition-colors min-w-[100px] flex-shrink-0 ${
+                            activeCalculator === tab.id
+                              ? 'bg-primary-50 border border-primary-200 text-primary-700'
+                              : 'hover:bg-gray-50 text-gray-700 border border-gray-200'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5 mb-2" />
+                          <p className="font-medium text-xs">{tab.name}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Desktop: Vertical List */}
+                <nav className="hidden lg:block space-y-2">
                   {calculatorTabs.map((tab) => {
                     const Icon = tab.icon;
                     return (

@@ -13,6 +13,13 @@ export const metadata: Metadata = {
   description: 'Professional crypto trading performance tracker and calculator',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export default function RootLayout({
   children,
 }: {

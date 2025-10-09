@@ -29,7 +29,7 @@ export interface AuthContextType {
 
 export interface SessionContextType {
   sessions: TradingSession[];
-  createSession: (session: Omit<TradingSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; message: string }>;
+  createSession: (session: Omit<TradingSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; message: string; sessionId?: string }>;
   updateSession: (id: string, updates: Partial<TradingSession>) => Promise<{ success: boolean; message: string }>;
   deleteSession: (id: string) => Promise<{ success: boolean; message: string }>;
   getSessionStats: () => {
@@ -42,12 +42,14 @@ export interface SessionContextType {
 export interface Trade {
   id: string;
   userId: string;
+  sessionId?: string; // Link trade to a session
   pairName: string;
   entryPrice: number;
-  exitPrice: number;
+  exitPrice?: number; // Optional for pending trades
   investment: number;
   date: string;
   type: 'buy' | 'sell';
+  status: 'pending' | 'won' | 'lost'; // Trade status
   profitOrLoss: number;
   profitOrLossPercentage: number;
   createdAt: string;
@@ -59,6 +61,7 @@ export interface TradeContextType {
   addTrade: (trade: Omit<Trade, 'id' | 'userId' | 'profitOrLoss' | 'profitOrLossPercentage' | 'createdAt' | 'updatedAt'>) => Promise<{ success: boolean; message: string }>;
   updateTrade: (id: string, updates: Partial<Trade>) => Promise<{ success: boolean; message: string }>;
   deleteTrade: (id: string) => Promise<{ success: boolean; message: string }>;
+  recordTradeResult: (tradeId: string, result: 'won' | 'lost', riskRewardRatio: number) => Promise<{ success: boolean; message: string }>;
   getTradeStats: () => {
     totalTrades: number;
     totalProfit: number;
@@ -66,6 +69,7 @@ export interface TradeContextType {
     profitPercentage: number;
     activeInvestment: number;
   };
+  getSessionTrades: (sessionId: string) => Trade[];
 }
 
 export interface BBTCalculation {

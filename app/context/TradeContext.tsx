@@ -65,7 +65,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return { success: false, message: 'Entry price must be greater than 0' };
       }
 
-      if (tradeData.exitPrice <= 0) {
+      if (tradeData.exitPrice && tradeData.exitPrice <= 0) {
         return { success: false, message: 'Exit price must be greater than 0' };
       }
 
@@ -77,13 +77,20 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return { success: false, message: 'Date is required' };
       }
 
-      // Calculate profit/loss
-      const { profitOrLoss, profitOrLossPercentage } = calculateProfitOrLoss(
-        tradeData.entryPrice,
-        tradeData.exitPrice,
-        tradeData.investment,
-        tradeData.type
-      );
+      // Calculate profit/loss only if trade is not pending
+      let profitOrLoss = 0;
+      let profitOrLossPercentage = 0;
+
+      if (tradeData.status !== 'pending' && tradeData.exitPrice) {
+        const result = calculateProfitOrLoss(
+          tradeData.entryPrice,
+          tradeData.exitPrice,
+          tradeData.investment,
+          tradeData.type
+        );
+        profitOrLoss = result.profitOrLoss;
+        profitOrLossPercentage = result.profitOrLossPercentage;
+      }
 
       // Create new trade
       const newTrade: Trade = {
@@ -134,14 +141,16 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       // Recalculate profit/loss if relevant fields are updated
       if (updates.entryPrice || updates.exitPrice || updates.investment || updates.type) {
-        const { profitOrLoss, profitOrLossPercentage } = calculateProfitOrLoss(
-          updatedTrade.entryPrice,
-          updatedTrade.exitPrice,
-          updatedTrade.investment,
-          updatedTrade.type
-        );
-        updatedTrade.profitOrLoss = profitOrLoss;
-        updatedTrade.profitOrLossPercentage = profitOrLossPercentage;
+        if (updatedTrade.status !== 'pending' && updatedTrade.exitPrice) {
+          const { profitOrLoss, profitOrLossPercentage } = calculateProfitOrLoss(
+            updatedTrade.entryPrice,
+            updatedTrade.exitPrice,
+            updatedTrade.investment,
+            updatedTrade.type
+          );
+          updatedTrade.profitOrLoss = profitOrLoss;
+          updatedTrade.profitOrLossPercentage = profitOrLossPercentage;
+        }
       }
 
       // Save updated trades
@@ -204,12 +213,137 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   };
 
+  const getSessionTrades = (sessionId: string) => {
+    return trades.filter(trade => trade.sessionId === sessionId);
+  };
+
+  const recordTradeResult = async (tradeId: string, result: 'won' | 'lost', riskRewardRatio: number): Promise<{ success: boolean; message: string }> => {
+    try {
+      if (!user) {
+        return { success: false, message: 'User must be logged in to record trade results' };
+      }
+
+      const allTrades = storageUtils.getTrades();
+      const tradeIndex = allTrades.findIndex(trade => trade.id === tradeId && trade.userId === user.id);
+
+      if (tradeIndex === -1) {
+        return { success: false, message: 'Trade not found' };
+      }
+
+      const trade = allTrades[tradeIndex];
+
+      if (trade.status !== 'pending') {
+        return { success: false, message: 'Trade result already recorded' };
+      }
+
+      // Calculate profit or loss based on result
+      let profitOrLoss: number;
+      let profitOrLossPercentage: number;
+
+      if (result === 'won') {
+        // Win = investment * riskRewardRatio (e.g., $700 * 1 = $700 profit)
+        profitOrLoss = trade.investment * riskRewardRatio;
+        profitOrLossPercentage = riskRewardRatio * 100;
+      } else {
+        // Loss = -investment (e.g., -$700)
+        profitOrLoss = -trade.investment;
+        profitOrLossPercentage = -100;
+      }
+
+      // Update the trade
+      const updatedTrade = {
+        ...trade,
+        status: result,
+        profitOrLoss,
+        profitOrLossPercentage,
+        updatedAt: new Date().toISOString(),
+      };
+
+      allTrades[tradeIndex] = updatedTrade;
+
+      // DYNAMIC COMPOUNDING: Update next pending trade's risk based on new balance
+      if (trade.sessionId) {
+        const sessionTrades = allTrades.filter(t => t.sessionId === trade.sessionId);
+        const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
+        const pendingTrades = sessionTrades.filter(t => t.status === 'pending');
+
+        if (pendingTrades.length > 0) {
+          // Calculate new balance after this trade
+          const sessions = storageUtils.getSessions();
+          const session = sessions.find(s => s.id === trade.sessionId);
+
+          if (session) {
+            let newBalance = session.capital;
+            completedTrades.forEach(t => {
+              newBalance += t.profitOrLoss;
+            });
+
+            // Calculate risk percentage using Kelly Criterion
+            const winRate = session.accuracy / 100;
+            const lossRate = 1 - winRate;
+            const rrRatio = session.riskRewardRatio;
+            const kellyPercent = (winRate * rrRatio - lossRate) / rrRatio;
+            let riskPercent = kellyPercent * 1.5;
+            riskPercent = Math.max(0.05, Math.min(0.50, riskPercent));
+
+            // Update the NEXT pending trade's investment based on new balance
+            const nextPendingTrade = pendingTrades.sort((a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            )[0];
+
+            if (nextPendingTrade) {
+              const nextTradeIndex = allTrades.findIndex(t => t.id === nextPendingTrade.id);
+              if (nextTradeIndex !== -1) {
+                allTrades[nextTradeIndex] = {
+                  ...allTrades[nextTradeIndex],
+                  investment: newBalance * riskPercent,
+                  updatedAt: new Date().toISOString(),
+                };
+              }
+            }
+          }
+        }
+      }
+
+      storageUtils.saveTrades(allTrades);
+
+      // Update local state
+      setTrades(prev => {
+        const updatedTrades = [...prev];
+        const idx = updatedTrades.findIndex(t => t.id === tradeId);
+        if (idx !== -1) {
+          updatedTrades[idx] = updatedTrade;
+        }
+
+        // Also update next pending trade if it exists
+        if (trade.sessionId) {
+          const allSessionTrades = allTrades.filter(t => t.sessionId === trade.sessionId);
+          updatedTrades.forEach((t, i) => {
+            const updated = allSessionTrades.find(at => at.id === t.id);
+            if (updated) {
+              updatedTrades[i] = updated;
+            }
+          });
+        }
+
+        return updatedTrades;
+      });
+
+      return { success: true, message: `Trade marked as ${result}` };
+    } catch (error) {
+      console.error('Record trade result error:', error);
+      return { success: false, message: 'Failed to record trade result. Please try again.' };
+    }
+  };
+
   const value: TradeContextType = {
     trades,
     addTrade,
     updateTrade,
     deleteTrade,
     getTradeStats,
+    getSessionTrades,
+    recordTradeResult,
   };
 
   return (

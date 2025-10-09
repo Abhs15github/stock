@@ -35,7 +35,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [user]);
 
-  const createSession = async (sessionData: Omit<TradingSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; message: string }> => {
+  const createSession = async (sessionData: Omit<TradingSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; message: string; sessionId?: string }> => {
     try {
       if (!user) {
         return { success: false, message: 'User must be logged in to create sessions' };
@@ -64,10 +64,68 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Update local state
       setSessions(prev => [...prev, newSession]);
 
-      return { success: true, message: 'Session created successfully' };
+      // Create ALL pending trades automatically based on totalTrades
+      await createAllPendingTrades(newSession);
+
+      return { success: true, message: 'Session created successfully', sessionId: newSession.id };
     } catch (error) {
       console.error('Create session error:', error);
       return { success: false, message: 'Failed to create session. Please try again.' };
+    }
+  };
+
+  const calculateRiskPercentage = (session: TradingSession): number => {
+    // Calculate optimal risk percentage using Kelly Criterion
+    const winRate = session.accuracy / 100;
+    const lossRate = 1 - winRate;
+    const rrRatio = session.riskRewardRatio;
+
+    // Kelly Criterion: f = (p * b - q) / b
+    const kellyPercent = (winRate * rrRatio - lossRate) / rrRatio;
+
+    // Use aggressive multiplier for growth
+    let riskPercent = kellyPercent * 1.5;
+
+    // Ensure risk percentage is reasonable (between 5% and 50%)
+    riskPercent = Math.max(0.05, Math.min(0.50, riskPercent));
+
+    return riskPercent;
+  };
+
+  const createAllPendingTrades = async (session: TradingSession) => {
+    try {
+      const riskPercent = calculateRiskPercentage(session);
+      const allTrades = storageUtils.getTrades();
+
+      // Create all pending trades at once
+      // Note: Only the FIRST trade shows in "Record Trade Results" section
+      // Others become visible as you complete trades (dynamic behavior)
+      for (let i = 0; i < session.totalTrades; i++) {
+        const calculatedRisk = session.capital * riskPercent;
+
+        const newTrade = {
+          id: (Date.now() + i + 1).toString(),
+          userId: user!.id,
+          sessionId: session.id,
+          pairName: 'Trade Entry',
+          entryPrice: 0,
+          exitPrice: undefined,
+          investment: calculatedRisk, // Will be recalculated when trade becomes active
+          date: new Date().toISOString(),
+          type: 'buy' as const,
+          status: 'pending' as const,
+          profitOrLoss: 0,
+          profitOrLossPercentage: 0,
+          createdAt: new Date(Date.now() + i).toISOString(), // Slight offset for ordering
+          updatedAt: new Date(Date.now() + i).toISOString(),
+        };
+
+        allTrades.push(newTrade);
+      }
+
+      storageUtils.saveTrades(allTrades);
+    } catch (error) {
+      console.error('Error creating pending trades:', error);
     }
   };
 

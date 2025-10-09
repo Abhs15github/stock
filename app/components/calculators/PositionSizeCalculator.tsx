@@ -89,15 +89,19 @@ export const PositionSizeCalculator: React.FC<PositionSizeCalculatorProps> = ({ 
       transition={{ duration: 0.5 }}
       className="card"
     >
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">BBT Position Size Calculator</h3>
-          <p className="text-sm text-gray-600">Calculate optimal position size based on your risk tolerance</p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 space-y-3 sm:space-y-0">
+        <div className="flex-1">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+            BBT Position Size Calculator
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600 mt-1">
+            Calculate optimal position size based on your risk tolerance
+          </p>
         </div>
-        <Calculator className="w-6 h-6 text-primary-600" />
+        <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 flex-shrink-0" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Input Section */}
         <div className="space-y-4">
           <div>

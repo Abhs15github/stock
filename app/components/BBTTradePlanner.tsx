@@ -276,19 +276,19 @@ export const BBTTradePlanner: React.FC<BBTTradePlannerProps> = ({ onPlanCreated 
     >
       {/* Header */}
       <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <BookOpen className="w-6 h-6 mr-2 text-blue-600" />
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 space-y-3 sm:space-y-0">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600 flex-shrink-0" />
               BBT Trade Planner
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               Create comprehensive trade plans with risk management and optimization
             </p>
           </div>
-          <div className="flex items-center space-x-2">
-            <Shield className="w-5 h-5 text-green-600" />
-            <span className="text-sm text-green-600 font-medium">Risk Managed</span>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+            <span className="text-xs sm:text-sm text-green-600 font-medium">Risk Managed</span>
           </div>
         </div>
 
@@ -333,12 +333,12 @@ export const BBTTradePlanner: React.FC<BBTTradePlannerProps> = ({ onPlanCreated 
         )}
 
         {/* Trade Setup Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Left Column - Basic Setup */}
           <div className="space-y-4">
-            <h4 className="font-medium text-gray-900">Trade Setup</h4>
+            <h4 className="font-medium text-gray-900 text-sm sm:text-base">Trade Setup</h4>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Account Size ($)
