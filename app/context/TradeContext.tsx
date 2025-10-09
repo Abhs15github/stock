@@ -217,6 +217,19 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return trades.filter(trade => trade.sessionId === sessionId);
   };
 
+  const reloadTrades = () => {
+    if (user) {
+      try {
+        const allTrades = storageUtils.getTrades();
+        const userTrades = allTrades.filter(trade => trade.userId === user.id);
+        setTrades(userTrades);
+        console.log('Trades reloaded:', userTrades.length);
+      } catch (error) {
+        console.error('Error reloading trades:', error);
+      }
+    }
+  };
+
   const recordTradeResult = async (tradeId: string, result: 'won' | 'lost', riskRewardRatio: number): Promise<{ success: boolean; message: string }> => {
     try {
       if (!user) {
@@ -344,6 +357,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     getTradeStats,
     getSessionTrades,
     recordTradeResult,
+    reloadTrades,
   };
 
   return (

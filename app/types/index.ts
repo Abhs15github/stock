@@ -62,6 +62,7 @@ export interface TradeContextType {
   updateTrade: (id: string, updates: Partial<Trade>) => Promise<{ success: boolean; message: string }>;
   deleteTrade: (id: string) => Promise<{ success: boolean; message: string }>;
   recordTradeResult: (tradeId: string, result: 'won' | 'lost', riskRewardRatio: number) => Promise<{ success: boolean; message: string }>;
+  reloadTrades: () => void;
   getTradeStats: () => {
     totalTrades: number;
     totalProfit: number;

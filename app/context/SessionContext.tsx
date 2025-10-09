@@ -97,33 +97,40 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const riskPercent = calculateRiskPercentage(session);
       const allTrades = storageUtils.getTrades();
 
+      console.log('Creating pending trades for session:', session.id);
+      console.log('Total trades to create:', session.totalTrades);
+      console.log('Risk percentage:', riskPercent);
+
       // Create all pending trades at once
-      // Note: Only the FIRST trade shows in "Record Trade Results" section
-      // Others become visible as you complete trades (dynamic behavior)
+      const newTrades = [];
       for (let i = 0; i < session.totalTrades; i++) {
         const calculatedRisk = session.capital * riskPercent;
+        const timestamp = Date.now() + i;
 
         const newTrade = {
-          id: (Date.now() + i + 1).toString(),
+          id: timestamp.toString(),
           userId: user!.id,
           sessionId: session.id,
           pairName: 'Trade Entry',
           entryPrice: 0,
           exitPrice: undefined,
-          investment: calculatedRisk, // Will be recalculated when trade becomes active
+          investment: calculatedRisk,
           date: new Date().toISOString(),
           type: 'buy' as const,
           status: 'pending' as const,
           profitOrLoss: 0,
           profitOrLossPercentage: 0,
-          createdAt: new Date(Date.now() + i).toISOString(), // Slight offset for ordering
-          updatedAt: new Date(Date.now() + i).toISOString(),
+          createdAt: new Date(timestamp).toISOString(),
+          updatedAt: new Date(timestamp).toISOString(),
         };
 
+        newTrades.push(newTrade);
         allTrades.push(newTrade);
       }
 
+      console.log('Created trades:', newTrades.length);
       storageUtils.saveTrades(allTrades);
+      console.log('Saved trades to storage');
     } catch (error) {
       console.error('Error creating pending trades:', error);
     }

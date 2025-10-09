@@ -32,7 +32,7 @@ import { TradingSession } from '../../types';
 export default function SessionDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { sessions } = useSession();
-  const { trades, getSessionTrades, recordTradeResult } = useTrade();
+  const { trades, getSessionTrades, recordTradeResult, reloadTrades } = useTrade();
   const { showToast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -50,6 +50,14 @@ export default function SessionDetailPage() {
       router.push('/login');
     }
   }, [user, authLoading, router]);
+
+  // Reload trades when component mounts or sessionId changes
+  useEffect(() => {
+    if (sessionId && user) {
+      console.log('Reloading trades for session:', sessionId);
+      reloadTrades();
+    }
+  }, [sessionId, user, reloadTrades]);
 
   useEffect(() => {
     if (sessions && sessionId) {
