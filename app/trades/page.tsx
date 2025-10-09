@@ -367,7 +367,9 @@ export default function TradesPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
                               <div>${formatPrice(trade.entryPrice)}</div>
-                              <div className="text-gray-500">${formatPrice(trade.exitPrice)}</div>
+                              <div className="text-gray-500">
+                                {trade.exitPrice ? `$${formatPrice(trade.exitPrice)}` : 'Pending'}
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -502,7 +504,7 @@ const TradeModal: React.FC<{
   const [formData, setFormData] = useState({
     pairName: trade?.pairName || '',
     entryPrice: trade?.entryPrice.toString() || '',
-    exitPrice: trade?.exitPrice.toString() || '',
+    exitPrice: trade?.exitPrice?.toString() || '',
     investment: trade?.investment.toString() || '',
     date: trade?.date || new Date().toISOString().split('T')[0],
     type: trade?.type || 'buy' as 'buy' | 'sell',
@@ -522,6 +524,7 @@ const TradeModal: React.FC<{
         investment: parseFloat(formData.investment),
         date: formData.date,
         type: formData.type,
+        status: 'won' as const, // Default to 'won' for manual trades with exit price
       };
 
       let result;

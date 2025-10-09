@@ -3,7 +3,7 @@ import { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
-  value: number;
+  value: number | string;
   icon: LucideIcon;
   color: 'blue' | 'green' | 'orange' | 'purple' | 'red';
   subtitle?: string;
