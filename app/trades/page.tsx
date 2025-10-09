@@ -517,14 +517,31 @@ const TradeModal: React.FC<{
     setIsSubmitting(true);
 
     try {
+      const exitPrice = formData.exitPrice ? parseFloat(formData.exitPrice) : undefined;
+      const entryPrice = parseFloat(formData.entryPrice);
+      const investment = parseFloat(formData.investment);
+
+      // Determine status based on exit price and profit/loss
+      let status: 'pending' | 'won' | 'lost' = 'pending';
+      if (exitPrice) {
+        // Calculate profit/loss to determine won/lost
+        let profitOrLoss = 0;
+        if (formData.type === 'buy') {
+          profitOrLoss = ((exitPrice - entryPrice) / entryPrice) * investment;
+        } else {
+          profitOrLoss = ((entryPrice - exitPrice) / entryPrice) * investment;
+        }
+        status = profitOrLoss >= 0 ? 'won' : 'lost';
+      }
+
       const tradeData = {
         pairName: formData.pairName,
-        entryPrice: parseFloat(formData.entryPrice),
-        exitPrice: parseFloat(formData.exitPrice),
-        investment: parseFloat(formData.investment),
+        entryPrice,
+        exitPrice,
+        investment,
         date: formData.date,
         type: formData.type,
-        status: 'won' as const, // Default to 'won' for manual trades with exit price
+        status,
       };
 
       let result;
