@@ -37,17 +37,40 @@ export default function NewSessionPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const parseRiskRewardRatio = (ratio: string): number => {
+    // Parse ratio format like "1:3" to extract the reward part (3)
+    if (ratio.includes(':')) {
+      const parts = ratio.split(':');
+      if (parts.length === 2) {
+        const risk = parseFloat(parts[0]);
+        const reward = parseFloat(parts[1]);
+        if (risk > 0) {
+          return reward / risk; // Return the multiplier (e.g., 3/1 = 3)
+        }
+      }
+    }
+    // If no colon, assume it's just the multiplier
+    return parseFloat(ratio);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      // Validate ratio format
+      if (!formData.riskRewardRatio.match(/^\d+(\.\d+)?:\d+(\.\d+)?$/) && !formData.riskRewardRatio.match(/^\d+(\.\d+)?$/)) {
+        showToast('Risk-Reward Ratio must be in format "1:3" or a number', 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
       const result = await createSession({
         name: formData.name,
         capital: parseFloat(formData.capital),
         totalTrades: parseInt(formData.totalTrades),
         accuracy: parseFloat(formData.accuracy),
-        riskRewardRatio: parseFloat(formData.riskRewardRatio),
+        riskRewardRatio: parseRiskRewardRatio(formData.riskRewardRatio),
         status: 'active'
       });
 
@@ -185,19 +208,18 @@ export default function NewSessionPage() {
                   Risk-Reward Ratio
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   id="riskRewardRatio"
                   name="riskRewardRatio"
                   value={formData.riskRewardRatio}
                   onChange={handleChange}
                   required
-                  step="0.1"
-                  min="0.1"
-                  placeholder="e.g., 1"
+                  placeholder="e.g., 1:3"
+                  pattern="^\d+(\.\d+)?:\d+(\.\d+)?$|^\d+(\.\d+)?$"
                   className="input-field"
                 />
                 <p className="mt-1 text-sm text-gray-500">
-                  Your target risk-reward ratio (e.g., 1 means 1:1, 2 means 2:1)
+                  Enter ratio in format "1:3" (risk 1, reward 3) or just "3" for 3:1 ratio
                 </p>
               </div>
 
