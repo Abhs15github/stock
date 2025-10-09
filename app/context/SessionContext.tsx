@@ -81,13 +81,23 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const rrRatio = session.riskRewardRatio;
 
     // Kelly Criterion: f = (p * b - q) / b
+    // where p = win rate, q = loss rate, b = RR ratio
     const kellyPercent = (winRate * rrRatio - lossRate) / rrRatio;
 
-    // Use aggressive multiplier for growth
-    let riskPercent = kellyPercent * 1.5;
+    // Use a more conservative multiplier (1.1x Kelly for compound growth)
+    // This matches Lovely Profits' calculation (~37% for 50% ITM, 1:3 RR)
+    let riskPercent = kellyPercent * 1.1;
 
-    // Ensure risk percentage is reasonable (between 5% and 50%)
-    riskPercent = Math.max(0.05, Math.min(0.50, riskPercent));
+    // Ensure risk percentage is reasonable (between 2% and 50%)
+    riskPercent = Math.max(0.02, Math.min(0.50, riskPercent));
+
+    console.log('Kelly Criterion calculation:', {
+      winRate,
+      rrRatio,
+      kellyPercent,
+      finalRiskPercent: riskPercent,
+      expectedRisk: session.capital * riskPercent
+    });
 
     return riskPercent;
   };
