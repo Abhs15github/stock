@@ -291,13 +291,30 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               newBalance += t.profitOrLoss;
             });
 
-            // Calculate risk percentage using Kelly Criterion
+            // Use same risk calculation as SessionContext
             const winRate = session.accuracy / 100;
-            const lossRate = 1 - winRate;
             const rrRatio = session.riskRewardRatio;
-            const kellyPercent = (winRate * rrRatio - lossRate) / rrRatio;
-            let riskPercent = kellyPercent * 1.5;
-            riskPercent = Math.max(0.05, Math.min(0.50, riskPercent));
+
+            // Base risk percentage based on RR ratio
+            let riskPercent = 0.15; // Default 15%
+
+            if (rrRatio >= 2) {
+              riskPercent = 0.25; // 25% for 1:2 or better
+            } else if (rrRatio >= 1.5) {
+              riskPercent = 0.20; // 20% for 1:1.5 to 1:2
+            } else if (rrRatio >= 1) {
+              riskPercent = 0.15; // 15% for 1:1 to 1:1.5
+            } else {
+              riskPercent = 0.10; // 10% for less than 1:1
+            }
+
+            // Kelly Criterion check
+            const kellyPercent = (winRate * rrRatio - (1 - winRate)) / rrRatio;
+            if (kellyPercent > riskPercent) {
+              riskPercent = Math.min(kellyPercent * 0.8, 0.40);
+            }
+
+            riskPercent = Math.max(0.05, Math.min(0.40, riskPercent));
 
             // Update the NEXT pending trade's investment based on new balance
             const nextPendingTrade = pendingTrades.sort((a, b) =>

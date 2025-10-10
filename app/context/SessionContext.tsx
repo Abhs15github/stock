@@ -75,28 +75,46 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const calculateRiskPercentage = (session: TradingSession): number => {
-    // Calculate optimal risk percentage using Kelly Criterion
+    // Lovely Profits appears to use a fixed risk model based on RR ratio
+    // For 1:1 RR with 50% accuracy, they show 60.5% profit over 10 trades
+    // This suggests they use ~14.7% risk with assumed 70% win rate
+
     const winRate = session.accuracy / 100;
-    const lossRate = 1 - winRate;
     const rrRatio = session.riskRewardRatio;
 
-    // Kelly Criterion: f = (p * b - q) / b
-    // where p = win rate, q = loss rate, b = RR ratio
-    const kellyPercent = (winRate * rrRatio - lossRate) / rrRatio;
+    // Base risk percentage (appears to be around 12-15% in Lovely Profits)
+    let riskPercent = 0.15; // Starting with 15% base
 
-    // Use a more conservative multiplier (1.1x Kelly for compound growth)
-    // This matches Lovely Profits' calculation (~37% for 50% ITM, 1:3 RR)
-    let riskPercent = kellyPercent * 1.1;
+    // Adjust based on RR ratio
+    // Higher RR = can afford more risk
+    if (rrRatio >= 2) {
+      riskPercent = 0.25; // 25% for 1:2 or better
+    } else if (rrRatio >= 1.5) {
+      riskPercent = 0.20; // 20% for 1:1.5 to 1:2
+    } else if (rrRatio >= 1) {
+      riskPercent = 0.15; // 15% for 1:1 to 1:1.5
+    } else {
+      riskPercent = 0.10; // 10% for less than 1:1
+    }
 
-    // Ensure risk percentage is reasonable (between 2% and 50%)
-    riskPercent = Math.max(0.02, Math.min(0.50, riskPercent));
+    // Kelly Criterion for reference (but not used in Lovely Profits model)
+    const kellyPercent = (winRate * rrRatio - (1 - winRate)) / rrRatio;
 
-    console.log('Kelly Criterion calculation:', {
-      winRate,
-      rrRatio,
-      kellyPercent,
-      finalRiskPercent: riskPercent,
-      expectedRisk: session.capital * riskPercent
+    // If Kelly suggests higher risk and is positive, use it with conservative multiplier
+    if (kellyPercent > riskPercent) {
+      riskPercent = Math.min(kellyPercent * 0.8, 0.40); // Max 40%
+    }
+
+    // Ensure risk percentage is reasonable (between 5% and 40%)
+    riskPercent = Math.max(0.05, Math.min(0.40, riskPercent));
+
+    console.log('Risk calculation:', {
+      winRate: `${(winRate * 100).toFixed(1)}%`,
+      rrRatio: `1:${rrRatio}`,
+      kellyPercent: `${(kellyPercent * 100).toFixed(2)}%`,
+      finalRiskPercent: `${(riskPercent * 100).toFixed(2)}%`,
+      riskAmount: `$${(session.capital * riskPercent).toFixed(2)}`,
+      note: 'Using Lovely Profits-style fixed risk model'
     });
 
     return riskPercent;

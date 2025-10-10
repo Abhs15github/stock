@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { SessionProvider } from './context/SessionContext'
 import { TradeProvider } from './context/TradeContext'
 import { ToastProvider } from './components/Toast'
+import { ThemeProvider } from './context/ThemeContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,15 +29,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
-          <SessionProvider>
-            <TradeProvider>
-              <ToastProvider>
-                {children}
-              </ToastProvider>
-            </TradeProvider>
-          </SessionProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <SessionProvider>
+              <TradeProvider>
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
+              </TradeProvider>
+            </SessionProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
