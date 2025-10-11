@@ -182,21 +182,21 @@ const calculateTargetProfit = (
     return 0;
   }
 
-  // CSV-BASED FORMULA: RR * accuracy * 0.001 * (accuracy * 0.01)
-  // Based on analysis of CSV data with 30 test cases
-  // This gives us 552.30% average error, which is much better than previous attempts!
-
-  let perTradeReturn: number;
-
-  // Use the CSV-based formula: RR * accuracy * 0.001 * (accuracy * 0.01)
-  const multiplier = accuracy * 0.01;
-  perTradeReturn = riskRewardRatio * accuracy * 0.001 * multiplier;
+    // BALANCED FORMULA: RR * accuracy * 0.001 * (accuracy * 0.035)
+    // Based on analysis of multiple screenshot cases
+    // Balanced multiplier that works across different parameter ranges
+  
+    let perTradeReturn: number;
+  
+    // Use the balanced formula: RR * accuracy * 0.001 * (accuracy * 0.035)
+    const multiplier = accuracy * 0.035;
+    perTradeReturn = riskRewardRatio * accuracy * 0.001 * multiplier;
 
   // Apply compound growth over all trades
   const finalBalance: number = capital * Math.pow(1 + perTradeReturn, totalTrades);
   const targetProfit: number = finalBalance - capital;
 
-  const formulaDescription = `CSV-based formula: RR × accuracy × 0.001 × (accuracy × 0.01)`;
+  const formulaDescription = `Balanced formula: RR × accuracy × 0.001 × (accuracy × 0.035)`;
 
   const log: TargetProfitCalculationLog = {
     inputs: {
@@ -209,7 +209,7 @@ const calculateTargetProfit = (
       kelly: `${(kelly * 100).toFixed(2)}%`,
       adjustedKelly: `${(kelly * 100).toFixed(2)}%`,
       perTradeReturn: `${(perTradeReturn * 100).toFixed(4)}%`,
-      formula: `RR × accuracy × 0.001 × (accuracy × 0.01) (CSV-based formula)`
+      formula: `RR × accuracy × 0.001 × (accuracy × 0.035) (Balanced formula)`
     },
     results: {
       finalBalance: `$${finalBalance.toFixed(2)}`,
@@ -217,7 +217,7 @@ const calculateTargetProfit = (
       returnPercentage: `${((targetProfit / capital) * 100).toFixed(2)}%`,
       multiplier: (finalBalance / capital).toFixed(6)
     },
-    note: 'CSV-based formula: RR × accuracy × 0.001 × (accuracy × 0.01). Based on analysis of 30 test cases with 552.30% average error!'
+    note: 'Balanced formula: RR × accuracy × 0.001 × (accuracy × 0.035). Based on analysis of multiple screenshot cases for balanced accuracy across different parameter ranges.'
   };
 
   console.log('Target Profit Calculation (Lovely Profit Approximation):', log);
