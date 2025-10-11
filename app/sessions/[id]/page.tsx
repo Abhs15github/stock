@@ -196,7 +196,7 @@ const calculateTargetProfit = (
   const finalBalance: number = capital * Math.pow(1 + perTradeReturn, totalTrades);
   const targetProfit: number = finalBalance - capital;
 
-  const formulaDescription = `Adaptive Kelly: ${(kellyFraction * 100).toFixed(1)}% of Kelly Criterion (EV: ${expectedValue.toFixed(2)})`;
+  const formulaDescription = `CSV-based formula: RR × accuracy × 0.001 × (accuracy × 0.01)`;
 
   const log: TargetProfitCalculationLog = {
     inputs: {
