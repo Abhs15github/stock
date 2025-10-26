@@ -10,14 +10,11 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Skip authentication for development - go directly to dashboard
     if (!isLoading) {
-      if (user) {
-        router.push('/dashboard');
-      } else {
-        router.push('/login');
-      }
+      router.push('/dashboard');
     }
-  }, [user, isLoading, router]);
+  }, [isLoading, router]);
 
   return <PageLoader />;
 }

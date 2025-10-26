@@ -30,11 +30,12 @@ export default function SessionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
+  // Commented out for development - skip authentication
+  // useEffect(() => {
+  //   if (!authLoading && !user) {
+  //     router.push('/login');
+  //   }
+  // }, [user, authLoading, router]);
 
   const handleDeleteSession = async (sessionId: string, sessionName: string) => {
     if (!confirm(`Are you sure you want to delete session "${sessionName}"?`)) {
@@ -106,7 +107,7 @@ export default function SessionsPage() {
         >
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Lovely Profit Sessions</h1>
+              <h1 className="text-3xl font-bold text-gray-900">BBT Trade Sessions</h1>
               <p className="text-gray-600 mt-1">Manage and track your trading sessions</p>
             </div>
             <Link
@@ -164,7 +165,9 @@ export default function SessionsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sessions.map((session, index) => {
+              {sessions
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((session, index) => {
                 const progress = calculateProgress(session);
                 const winRate = calculateWinRate(session);
                 const targetProfit = calculateTargetProfit(session);

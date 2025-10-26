@@ -254,11 +254,11 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       let profitOrLossPercentage: number;
 
       if (result === 'won') {
-        // Win = investment * riskRewardRatio (e.g., $700 * 1 = $700 profit)
+        // Win = investment * riskRewardRatio (e.g., $100 * 3 = $300 profit)
         profitOrLoss = trade.investment * riskRewardRatio;
         profitOrLossPercentage = riskRewardRatio * 100;
       } else {
-        // Loss = -investment (e.g., -$700)
+        // Loss = -investment (e.g., -$100)
         profitOrLoss = -trade.investment;
         profitOrLossPercentage = -100;
       }
@@ -274,88 +274,18 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       allTrades[tradeIndex] = updatedTrade;
 
-      // DYNAMIC COMPOUNDING: Update next pending trade's risk based on new balance
-      if (trade.sessionId) {
-        const sessionTrades = allTrades.filter(t => t.sessionId === trade.sessionId);
-        const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
-        const pendingTrades = sessionTrades.filter(t => t.status === 'pending');
-
-        if (pendingTrades.length > 0) {
-          // Calculate new balance after this trade
-          const sessions = storageUtils.getSessions();
-          const session = sessions.find(s => s.id === trade.sessionId);
-
-          if (session) {
-            let newBalance = session.capital;
-            completedTrades.forEach(t => {
-              newBalance += t.profitOrLoss;
-            });
-
-            // Use same risk calculation as SessionContext
-            const winRate = session.accuracy / 100;
-            const rrRatio = session.riskRewardRatio;
-
-            // Base risk percentage based on RR ratio
-            let riskPercent = 0.15; // Default 15%
-
-            if (rrRatio >= 2) {
-              riskPercent = 0.25; // 25% for 1:2 or better
-            } else if (rrRatio >= 1.5) {
-              riskPercent = 0.20; // 20% for 1:1.5 to 1:2
-            } else if (rrRatio >= 1) {
-              riskPercent = 0.15; // 15% for 1:1 to 1:1.5
-            } else {
-              riskPercent = 0.10; // 10% for less than 1:1
-            }
-
-            // Kelly Criterion check
-            const kellyPercent = (winRate * rrRatio - (1 - winRate)) / rrRatio;
-            if (kellyPercent > riskPercent) {
-              riskPercent = Math.min(kellyPercent * 0.8, 0.40);
-            }
-
-            riskPercent = Math.max(0.05, Math.min(0.40, riskPercent));
-
-            // Update the NEXT pending trade's investment based on new balance
-            const nextPendingTrade = pendingTrades.sort((a, b) =>
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            )[0];
-
-            if (nextPendingTrade) {
-              const nextTradeIndex = allTrades.findIndex(t => t.id === nextPendingTrade.id);
-              if (nextTradeIndex !== -1) {
-                allTrades[nextTradeIndex] = {
-                  ...allTrades[nextTradeIndex],
-                  investment: newBalance * riskPercent,
-                  updatedAt: new Date().toISOString(),
-                };
-              }
-            }
-          }
-        }
-      }
+      // Note: Dynamic compounding logic removed to prevent session ending issues
+      // This was causing the session to behave as if it was ending when trades were recorded
 
       storageUtils.saveTrades(allTrades);
 
-      // Update local state
+      // Update local state - only update the specific trade that was recorded
       setTrades(prev => {
         const updatedTrades = [...prev];
         const idx = updatedTrades.findIndex(t => t.id === tradeId);
         if (idx !== -1) {
           updatedTrades[idx] = updatedTrade;
         }
-
-        // Also update next pending trade if it exists
-        if (trade.sessionId) {
-          const allSessionTrades = allTrades.filter(t => t.sessionId === trade.sessionId);
-          updatedTrades.forEach((t, i) => {
-            const updated = allSessionTrades.find(at => at.id === t.id);
-            if (updated) {
-              updatedTrades[i] = updated;
-            }
-          });
-        }
-
         return updatedTrades;
       });
 
