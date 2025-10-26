@@ -367,10 +367,10 @@ testCases.forEach(tc => {
     new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
   const pendingTrades = allPendingTrades.length > 0 ? [allPendingTrades[0]] : []; // Show oldest pending trade first
-  // Show ONLY COMPLETED trades in the table (won/lost) - sorted by creation date (newest first)
-  const completedTrades = sessionTrades.filter(t => t.status !== 'pending').sort((a, b) =>
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  ); // Newest first
+        // Show ONLY COMPLETED trades in the table (won/lost) - sorted by creation date (oldest first)
+        const completedTrades = sessionTrades.filter(t => t.status !== 'pending').sort((a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        ); // Oldest first to match reference
 
   const tools = [
     { name: 'Forex Position Size Calculator', href: '/calculators' },
@@ -762,7 +762,7 @@ testCases.forEach(tc => {
 
                           return (
                             <tr key={trade.id} className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="py-3 px-4 text-sm font-medium">#{completedTrades.length - index}</td>
+                              <td className="py-3 px-4 text-sm font-medium">#{index + 1}</td>
                               <td className="py-3 px-4">
                                 {trade.status === 'won' ? (
                                   <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center">
