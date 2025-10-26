@@ -382,7 +382,7 @@ testCases.forEach(tc => {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -390,23 +390,23 @@ testCases.forEach(tc => {
           transition={{ duration: 0.5 }}
           className="mb-6"
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+            <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-0">
               <button
                 onClick={() => router.back()}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
               </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{session.name}</h1>
-                <div className="flex items-center space-x-3 mt-1">
-                  <p className="text-gray-600">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">{session.name}</h1>
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-3 mt-1">
+                  <p className="text-sm sm:text-base text-gray-600">
                     Created {new Date(session.createdAt).toLocaleDateString()}
                   </p>
-                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-400 hidden sm:inline">•</span>
                   <span
-                    className={`px-3 py-1 text-sm rounded-full ${
+                    className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-full w-fit ${
                       session.status === 'active'
                         ? 'bg-green-100 text-green-700'
                         : 'bg-gray-100 text-gray-700'
@@ -526,7 +526,7 @@ testCases.forEach(tc => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+              className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8"
             >
               <StatCard
                 title="CURRENT BALANCE"
@@ -559,7 +559,7 @@ testCases.forEach(tc => {
             </motion.div>
 
             {/* Progress and Strategy Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
               {/* Progress to Goal */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

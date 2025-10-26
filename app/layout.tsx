@@ -6,6 +6,7 @@ import { SessionProvider } from './context/SessionContext'
 import { TradeProvider } from './context/TradeContext'
 import { ToastProvider } from './components/Toast'
 import { ThemeProvider } from './context/ThemeContext'
+import { AppWrapper } from './components/AppWrapper'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -34,7 +35,9 @@ export default function RootLayout({
             <SessionProvider>
               <TradeProvider>
                 <ToastProvider>
-                  {children}
+                  <AppWrapper>
+                    {children}
+                  </AppWrapper>
                 </ToastProvider>
               </TradeProvider>
             </SessionProvider>

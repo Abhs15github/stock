@@ -146,8 +146,7 @@ export default function TradesPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -156,15 +155,15 @@ export default function TradesPage() {
             className="mb-8"
           >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Trade Tracker</h1>
-                <p className="mt-2 text-gray-600">
+              <div className="mb-4 sm:mb-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Trade Tracker</h1>
+                <p className="mt-1 text-sm sm:text-base text-gray-600">
                   Manage and analyze your trading performance
                 </p>
               </div>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="mt-4 sm:mt-0 btn-primary flex items-center space-x-2"
+                className="btn-primary flex items-center space-x-2 text-sm sm:text-base"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Trade</span>
@@ -177,7 +176,7 @@ export default function TradesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8"
           >
             <div className="card">
               <div className="flex items-center justify-between">

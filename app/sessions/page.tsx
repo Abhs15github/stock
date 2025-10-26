@@ -105,14 +105,14 @@ export default function SessionsPage() {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">BBT Trade Sessions</h1>
-              <p className="text-gray-600 mt-1">Manage and track your trading sessions</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6">
+            <div className="mb-4 sm:mb-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">BBT Trade Sessions</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track your trading sessions</p>
             </div>
             <Link
               href="/sessions/new"
-              className="btn-primary flex items-center space-x-2"
+              className="btn-primary flex items-center space-x-2 text-sm sm:text-base"
             >
               <Plus className="w-4 h-4" />
               <span>New Session</span>
@@ -120,7 +120,7 @@ export default function SessionsPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <StatCard
               title="Total Sessions"
               value={stats.total}
@@ -164,7 +164,7 @@ export default function SessionsPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {sessions
                 .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                 .map((session, index) => {
