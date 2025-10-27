@@ -63,7 +63,7 @@ export interface TradeContextType {
   deleteTrade: (id: string) => Promise<{ success: boolean; message: string }>;
   recordTradeResult: (tradeId: string, result: 'won' | 'lost', riskRewardRatio: number) => Promise<{ success: boolean; message: string }>;
   reloadTrades: () => void;
-  createNextPendingTrade: (sessionId: string, sessionCapital: number, riskPercent: number, riskRewardRatio: number) => Promise<{ success: boolean; message: string }>;
+  createNextPendingTrade: (sessionId: string, sessionCapital: number, riskPercent: number, riskRewardRatio: number, targetTrades: number) => Promise<{ success: boolean; message: string }>;
   getTradeStats: () => {
     totalTrades: number;
     totalProfit: number;

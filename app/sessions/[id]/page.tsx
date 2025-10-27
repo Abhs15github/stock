@@ -106,7 +106,11 @@ export default function SessionDetailPage() {
       
       // Create next pending trade with dynamic stake calculation
       const riskPercent = calculateRiskPercentage(session);
-      await createNextPendingTrade(session.id, session.capital, riskPercent, session.riskRewardRatio);
+      const result = await createNextPendingTrade(session.id, session.capital, riskPercent, session.riskRewardRatio, session.totalTrades);
+      
+      if (!result.success) {
+        showToast(result.message, 'info');
+      }
       
       // Reload trades to show the new pending trade
       reloadTrades();
@@ -380,6 +384,9 @@ testCases.forEach(tc => {
   const progress = calculateProgress();
   const targetProfit = calculateTargetProfit(session);
   const minTotalBalance = calculateMinTotalBalance();
+  
+  // Check if target trades limit has been reached
+  const isTargetReached = progress.completed >= session.totalTrades;
 
   // Get pending trades - SHOW ONLY THE FIRST ONE (oldest)
   const allPendingTrades = sessionTrades.filter(t => t.status === 'pending').sort((a, b) =>
@@ -487,6 +494,27 @@ testCases.forEach(tc => {
                 <h4 className="font-semibold text-orange-900">Action Required: Pending Trade Results</h4>
                 <p className="text-sm text-orange-800">
                   {allPendingTrades.length} trade(s) are waiting for results. Please record outcomes.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Target Reached Alert - Show when target trades limit is reached */}
+        {isTargetReached && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6"
+          >
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <div>
+                <h4 className="font-semibold text-green-900">🎉 Target Trades Completed!</h4>
+                <p className="text-sm text-green-800">
+                  You have completed {progress.completed} out of {session.totalTrades} target trades. 
+                  {progress.completed > session.totalTrades && ` (${progress.percentage}% complete)`}
                 </p>
               </div>
             </div>

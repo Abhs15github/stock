@@ -128,9 +128,15 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Get existing trades for this session
       const sessionTrades = allTrades.filter(trade => trade.sessionId === session.id);
       
+      // Check if target trades limit has been reached
+      const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
+      if (completedTrades.length >= session.totalTrades) {
+        console.log('Target trades limit reached:', completedTrades.length, '/', session.totalTrades);
+        return;
+      }
+      
       // Calculate current balance based on completed trades
       let currentBalance = session.capital;
-      const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
       
       completedTrades.forEach(trade => {
         currentBalance += trade.profitOrLoss;
@@ -162,6 +168,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       console.log('Created next pending trade with stake:', calculatedRisk);
       console.log('Current balance:', currentBalance);
+      console.log('Completed trades:', completedTrades.length, '/', session.totalTrades);
     } catch (error) {
       console.error('Error creating next pending trade:', error);
     }
