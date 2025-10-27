@@ -230,6 +230,58 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const createNextPendingTrade = async (sessionId: string, sessionCapital: number, riskPercent: number, riskRewardRatio: number) => {
+    try {
+      const allTrades = storageUtils.getTrades();
+      
+      // Get existing trades for this session
+      const sessionTrades = allTrades.filter(trade => trade.sessionId === sessionId);
+      
+      // Calculate current balance based on completed trades
+      let currentBalance = sessionCapital;
+      const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
+      
+      completedTrades.forEach(trade => {
+        currentBalance += trade.profitOrLoss;
+      });
+      
+      // Calculate stake as percentage of current balance (dynamic)
+      const calculatedRisk = currentBalance * riskPercent;
+      const timestamp = Date.now();
+
+      const newTrade = {
+        id: timestamp.toString(),
+        userId: user!.id,
+        sessionId: sessionId,
+        pairName: 'Trade Entry',
+        entryPrice: 0,
+        exitPrice: undefined,
+        investment: calculatedRisk,
+        date: new Date().toISOString(),
+        type: 'buy' as const,
+        status: 'pending' as const,
+        profitOrLoss: 0,
+        profitOrLossPercentage: 0,
+        createdAt: new Date(timestamp).toISOString(),
+        updatedAt: new Date(timestamp).toISOString(),
+      };
+
+      allTrades.push(newTrade);
+      storageUtils.saveTrades(allTrades);
+      
+      // Update local state
+      setTrades(prev => [...prev, newTrade]);
+      
+      console.log('Created next pending trade with stake:', calculatedRisk);
+      console.log('Current balance:', currentBalance);
+      
+      return { success: true, message: 'Next pending trade created' };
+    } catch (error) {
+      console.error('Error creating next pending trade:', error);
+      return { success: false, message: 'Failed to create next pending trade' };
+    }
+  };
+
   const recordTradeResult = async (tradeId: string, result: 'won' | 'lost', riskRewardRatio: number): Promise<{ success: boolean; message: string }> => {
     try {
       if (!user) {
@@ -274,9 +326,6 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       allTrades[tradeIndex] = updatedTrade;
 
-      // Note: Dynamic compounding logic removed to prevent session ending issues
-      // This was causing the session to behave as if it was ending when trades were recorded
-
       storageUtils.saveTrades(allTrades);
 
       // Update local state - only update the specific trade that was recorded
@@ -305,6 +354,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     getSessionTrades,
     recordTradeResult,
     reloadTrades,
+    createNextPendingTrade,
   };
 
   return (

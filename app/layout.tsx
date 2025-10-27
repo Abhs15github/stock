@@ -13,6 +13,14 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'BBT Trades - Trading Performance Tracker',
   description: 'Professional crypto trading performance tracker and calculator',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon.png', type: 'image/png' }
+    ],
+    shortcut: '/favicon.svg',
+    apple: '/icon.png',
+  },
 }
 
 export const viewport = {
@@ -29,6 +37,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>

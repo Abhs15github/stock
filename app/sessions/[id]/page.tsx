@@ -35,7 +35,7 @@ import { TradingSession } from '../../types';
 export default function SessionDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { sessions } = useSession();
-  const { trades, getSessionTrades, recordTradeResult, reloadTrades } = useTrade();
+  const { trades, getSessionTrades, recordTradeResult, reloadTrades, createNextPendingTrade } = useTrade();
   const { showToast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -82,6 +82,18 @@ export default function SessionDetailPage() {
     }
   }, [session, trades, getSessionTrades]);
 
+  // Calculate risk percentage for dynamic stake calculation
+  const calculateRiskPercentage = (session: TradingSession) => {
+    const winRate = session.accuracy / 100;
+    const kelly = (winRate * session.riskRewardRatio - (1 - winRate)) / session.riskRewardRatio;
+    
+    if (kelly <= 0) return 0.02; // Default 2% if Kelly is negative
+    
+    // Use fractional Kelly with conservative scaling
+    const fractionalKelly = kelly * 0.25; // 25% of Kelly
+    return Math.min(fractionalKelly, 0.1); // Cap at 10% maximum
+  };
+
   const handleRecordResult = async (tradeId: string, result: 'won' | 'lost') => {
     if (!session) return;
 
@@ -91,6 +103,13 @@ export default function SessionDetailPage() {
 
     if (response.success) {
       showToast(response.message, 'success');
+      
+      // Create next pending trade with dynamic stake calculation
+      const riskPercent = calculateRiskPercentage(session);
+      await createNextPendingTrade(session.id, session.capital, riskPercent, session.riskRewardRatio);
+      
+      // Reload trades to show the new pending trade
+      reloadTrades();
     } else {
       showToast(response.message, 'error');
     }

@@ -120,47 +120,61 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return riskPercent;
   };
 
-  const createAllPendingTrades = async (session: TradingSession) => {
+  const createNextPendingTrade = async (session: TradingSession) => {
     try {
       const riskPercent = calculateRiskPercentage(session);
       const allTrades = storageUtils.getTrades();
+      
+      // Get existing trades for this session
+      const sessionTrades = allTrades.filter(trade => trade.sessionId === session.id);
+      
+      // Calculate current balance based on completed trades
+      let currentBalance = session.capital;
+      const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
+      
+      completedTrades.forEach(trade => {
+        currentBalance += trade.profitOrLoss;
+      });
+      
+      // Calculate stake as percentage of current balance (dynamic)
+      const calculatedRisk = currentBalance * riskPercent;
+      const timestamp = Date.now();
 
-      console.log('Creating pending trades for session:', session.id);
-      console.log('Total trades to create:', session.totalTrades);
-      console.log('Risk percentage:', riskPercent);
+      const newTrade = {
+        id: timestamp.toString(),
+        userId: user!.id,
+        sessionId: session.id,
+        pairName: 'Trade Entry',
+        entryPrice: 0,
+        exitPrice: undefined,
+        investment: calculatedRisk,
+        date: new Date().toISOString(),
+        type: 'buy' as const,
+        status: 'pending' as const,
+        profitOrLoss: 0,
+        profitOrLossPercentage: 0,
+        createdAt: new Date(timestamp).toISOString(),
+        updatedAt: new Date(timestamp).toISOString(),
+      };
 
-      // Create all pending trades at once
-      const newTrades = [];
-      for (let i = 0; i < session.totalTrades; i++) {
-        const calculatedRisk = session.capital * riskPercent;
-        const timestamp = Date.now() + i;
-
-        const newTrade = {
-          id: timestamp.toString(),
-          userId: user!.id,
-          sessionId: session.id,
-          pairName: 'Trade Entry',
-          entryPrice: 0,
-          exitPrice: undefined,
-          investment: calculatedRisk,
-          date: new Date().toISOString(),
-          type: 'buy' as const,
-          status: 'pending' as const,
-          profitOrLoss: 0,
-          profitOrLossPercentage: 0,
-          createdAt: new Date(timestamp).toISOString(),
-          updatedAt: new Date(timestamp).toISOString(),
-        };
-
-        newTrades.push(newTrade);
-        allTrades.push(newTrade);
-      }
-
-      console.log('Created trades:', newTrades.length);
+      allTrades.push(newTrade);
       storageUtils.saveTrades(allTrades);
-      console.log('Saved trades to storage');
+      
+      console.log('Created next pending trade with stake:', calculatedRisk);
+      console.log('Current balance:', currentBalance);
     } catch (error) {
-      console.error('Error creating pending trades:', error);
+      console.error('Error creating next pending trade:', error);
+    }
+  };
+
+  const createAllPendingTrades = async (session: TradingSession) => {
+    try {
+      console.log('Creating initial pending trade for session:', session.id);
+      
+      // Only create the first pending trade
+      await createNextPendingTrade(session);
+    } catch (error) {
+      console.error('Error creating initial pending trade:', error);
     }
   };
 
