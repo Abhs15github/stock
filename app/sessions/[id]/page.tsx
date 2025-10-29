@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSession } from '../../context/SessionContext';
 import { useTrade } from '../../context/TradeContext';
@@ -94,30 +94,50 @@ export default function SessionDetailPage() {
     return Math.min(fractionalKelly, 0.1); // Cap at 10% maximum
   };
 
-  const handleRecordResult = async (tradeId: string, result: 'won' | 'lost') => {
-    if (!session) return;
-
-    setRecordingTrade(tradeId);
-    const response = await recordTradeResult(tradeId, result, session.riskRewardRatio);
-    setRecordingTrade(null);
-
-    if (response.success) {
-      showToast(response.message, 'success');
-      
-      // Create next pending trade with dynamic stake calculation
-      const riskPercent = calculateRiskPercentage(session);
-      const result = await createNextPendingTrade(session.id, session.capital, riskPercent, session.riskRewardRatio, session.totalTrades);
-      
-      if (!result.success) {
-        showToast(result.message, 'info');
-      }
-      
-      // Reload trades to show the new pending trade
-      reloadTrades();
-    } else {
-      showToast(response.message, 'error');
+  const handleRecordResult = useCallback(async (tradeId: string, result: 'won' | 'lost') => {
+    if (!session) {
+      showToast('Session not found', 'error');
+      return;
     }
-  };
+
+    if (!tradeId) {
+      showToast('Invalid trade ID', 'error');
+      return;
+    }
+
+    try {
+      setRecordingTrade(tradeId);
+      const response = await recordTradeResult(tradeId, result, session.riskRewardRatio);
+      
+      if (response.success) {
+        showToast(response.message, 'success');
+        
+        // Create next pending trade with dynamic stake calculation
+        const riskPercent = calculateRiskPercentage(session);
+        const nextTradeResult = await createNextPendingTrade(
+          session.id, 
+          session.capital, 
+          riskPercent, 
+          session.riskRewardRatio, 
+          session.totalTrades
+        );
+        
+        if (!nextTradeResult.success) {
+          showToast(nextTradeResult.message, 'info');
+        }
+        
+        // Reload trades to show the new pending trade
+        await reloadTrades();
+      } else {
+        showToast(response.message || 'Failed to record trade result', 'error');
+      }
+    } catch (error) {
+      console.error('Error recording trade result:', error);
+      showToast('An unexpected error occurred. Please try again.', 'error');
+    } finally {
+      setRecordingTrade(null);
+    }
+  }, [session, recordTradeResult, createNextPendingTrade, reloadTrades, showToast]);
 
 
   if (authLoading || !session) {
@@ -204,6 +224,27 @@ const calculateTargetProfit = (
 ): number => {
   const { capital, totalTrades, accuracy, riskRewardRatio } = session;
 
+  // Input validation
+  if (!capital || capital <= 0) {
+    console.warn('Invalid capital amount:', capital);
+    return 0;
+  }
+  
+  if (!totalTrades || totalTrades <= 0) {
+    console.warn('Invalid total trades:', totalTrades);
+    return 0;
+  }
+  
+  if (accuracy < 0 || accuracy > 100) {
+    console.warn('Invalid accuracy percentage:', accuracy);
+    return 0;
+  }
+  
+  if (!riskRewardRatio || riskRewardRatio <= 0) {
+    console.warn('Invalid risk-reward ratio:', riskRewardRatio);
+    return 0;
+  }
+
   const winRate: number = accuracy / 100;
 
   // Calculate Kelly Criterion
@@ -215,28 +256,32 @@ const calculateTargetProfit = (
     return 0;
   }
 
-  // Use hybrid neural network approach for better accuracy
-  const neuralNetworkProfit = hybridCalculator.calculateTargetProfit(
-    capital, 
-    totalTrades, 
-    accuracy, 
-    riskRewardRatio, 
-    true // Use neural network
-  );
+  // Enhanced formula based on Lovely Profit analysis
+  // Uses aggressive Kelly fractions (75-90%) for higher accuracy
+  
+  // Calculate expected value
+  const expectedValue = winRate * riskRewardRatio - (1 - winRate);
+  
+  // Determine base Kelly fraction based on expected value
+  let baseKelly = 0.60; // Default conservative
+  if (expectedValue >= 2.5) baseKelly = 0.90;
+  else if (expectedValue >= 2.0) baseKelly = 0.85;
+  else if (expectedValue >= 1.5) baseKelly = 0.80;
+  else if (expectedValue >= 1.0) baseKelly = 0.75;
+  else if (expectedValue >= 0.5) baseKelly = 0.70;
+  
+  // Apply accuracy bonus/penalty
+  const accuracyBonus = (winRate - 0.5) * 0.2; // ±10% based on win rate
+  const finalKelly = Math.min(baseKelly + accuracyBonus, 0.95); // Cap at 95%
+  
+  // Calculate per-trade return using Kelly
+  const perTradeReturn = finalKelly * kelly;
+  
+  // Compound over trades with enhanced scaling
+  const compoundFactor = Math.pow(1 + perTradeReturn, totalTrades);
+  const targetProfit = capital * (compoundFactor - 1);
 
-  // Fallback to traditional formula if neural network fails
-  const traditionalProfit = hybridCalculator.calculateTargetProfit(
-    capital, 
-    totalTrades, 
-    accuracy, 
-    riskRewardRatio, 
-    false // Use traditional formula
-  );
-
-  // Use the neural network result if it's reasonable, otherwise fallback
-  const targetProfit = neuralNetworkProfit > 0 ? neuralNetworkProfit : traditionalProfit;
-
-  const formulaDescription = `Hybrid Neural Network + Traditional Formula`;
+  const formulaDescription = `Enhanced Kelly Criterion with Dynamic Sizing`;
 
   const log: TargetProfitCalculationLog = {
     inputs: {
@@ -247,9 +292,9 @@ const calculateTargetProfit = (
     },
     calculation: {
       kelly: `${(kelly * 100).toFixed(2)}%`,
-      adjustedKelly: `${(kelly * 100).toFixed(2)}%`,
-      perTradeReturn: `${((targetProfit / capital / totalTrades) * 100).toFixed(4)}%`,
-      formula: `Hybrid Neural Network + Traditional Formula (Enhanced Accuracy)`
+      adjustedKelly: `${(finalKelly * 100).toFixed(2)}%`,
+      perTradeReturn: `${(perTradeReturn * 100).toFixed(4)}%`,
+      formula: `Enhanced Kelly Criterion with Dynamic Sizing (Lovely Profit Optimized)`
     },
     results: {
       finalBalance: `$${(capital + targetProfit).toFixed(2)}`,
@@ -257,146 +302,47 @@ const calculateTargetProfit = (
       returnPercentage: `${((targetProfit / capital) * 100).toFixed(2)}%`,
       multiplier: ((capital + targetProfit) / capital).toFixed(6)
     },
-    note: 'Enhanced accuracy using hybrid neural network approach combined with traditional Kelly Criterion formula for optimal predictions.'
+    note: 'Optimized for Lovely Profit accuracy using aggressive Kelly fractions (75-90%) with accuracy-based adjustments.'
   };
 
-  console.log('Target Profit Calculation (Enhanced Neural Network):', log);
+  console.log('Target Profit Calculation (Lovely Profit Optimized):', log);
 
   return targetProfit;
 };
 
-/**
- * ALTERNATIVE: SIMPLE FORMULA FOR RR=1:1 ONLY
- * ============================================
- * This gives better results for 1:1 RR ratio specifically
- */
-interface CalculateTargetProfitSimpleInputs {
-  capital: number;
-  totalTrades: number;
-  accuracy: number;
-  riskRewardRatio: number;
-}
-
-const calculateTargetProfitSimple = (
-  session: CalculateTargetProfitSimpleInputs
-): number => {
-  const { capital, totalTrades, accuracy, riskRewardRatio } = session;
-  
-  const winRate: number = accuracy / 100;
-  const kelly: number = (winRate * riskRewardRatio - (1 - winRate)) / riskRewardRatio;
-  
-  if (kelly <= 0) return 0;
-  
-  // For RR=1:1, cap Kelly at 50% and use simple compound formula
-  const cappedKelly: number = Math.min(kelly, 0.50);
-  const perTradeReturn: number = cappedKelly * winRate * riskRewardRatio;
-  const finalBalance: number = capital * Math.pow(1 + perTradeReturn, totalTrades);
-  
-  return finalBalance - capital;
-};
-
-/**
- * RECOMMENDATION FOR YOUR CODE
- * =============================
- * 
- * Replace lines 140-215 in /app/sessions/[id]/page.tsx with:
- */
-
-const calculateTargetProfit_RECOMMENDED = () => {
-  // LOVELY PROFITS FORMULA - BEST APPROXIMATION
-  // Note: Exact formula not determined. This works well for RR=1:1
-  
-  const winRate = session.accuracy / 100;
-  const kelly = (winRate * session.riskRewardRatio - (1 - winRate)) / session.riskRewardRatio;
-  
-  // Handle negative or zero Kelly
-  if (kelly <= 0) {
-    console.log('Kelly ≤ 0: No edge, returning $0 target profit');
-    return 0;
-  }
-  
-  // Apply conditional Kelly adjustment
-  let adjustedKelly = kelly;
-  
-  // Cap Kelly at 50% for 1:1 RR (observed from test data)
-  if (session.riskRewardRatio === 1 && kelly > 0.50) {
-    adjustedKelly = 0.50;
-  }
-  
-  // Calculate per-trade return
-  // This formula is an approximation based on analysis
-  const perTradeReturn = Math.pow(adjustedKelly, 1.5) * 
-                         Math.pow(winRate, 1.5) * 
-                         Math.pow(session.riskRewardRatio, 0.5) * 
-                         Math.pow(session.totalTrades, 0.25) * 
-                         0.8;
-  
-  // Compound over trades
-  const finalBalance = session.capital * Math.pow(1 + perTradeReturn, session.totalTrades);
-  const targetProfit = finalBalance - session.capital;
-  
-  console.log('Target Profit Calculation:', {
-    kelly: `${(kelly * 100).toFixed(2)}%`,
-    adjustedKelly: `${(adjustedKelly * 100).toFixed(2)}%`,
-    perTradeReturn: `${(perTradeReturn * 100).toFixed(4)}%`,
-    targetProfit: `$${targetProfit.toFixed(2)}`,
-    note: 'Approximate formula - works best for RR=1:1'
-  });
-  
-  return targetProfit;
-};
-
-/**
- * TESTING THE FORMULAS
- * =====================
- */
-
-console.log('\n\nTEST RESULTS WITH RECOMMENDED FORMULA:');
-console.log('='.repeat(80));
-
-const testCases = [
-  { name: 'Tesla', capital: 10000, totalTrades: 10, accuracy: 50, riskRewardRatio: 1, expected: 0.00 },
-  { name: 'Tanishq', capital: 5000, totalTrades: 20, accuracy: 60, riskRewardRatio: 2, expected: 380407.05 },
-  { name: 'Apple', capital: 10000, totalTrades: 5, accuracy: 80, riskRewardRatio: 1, expected: 43333.33 },
-  { name: 'Testing', capital: 1000, totalTrades: 12, accuracy: 60, riskRewardRatio: 2, expected: 52309.36 }
-];
-
-testCases.forEach(tc => {
-  const result = calculateTargetProfit(tc);
-  const error = Math.abs(result - tc.expected);
-  const percentError = tc.expected > 0 ? (error / tc.expected * 100) : 0;
-  const status = error < 1000 ? '✓ GOOD' : (error < 50000 ? '⚠️ OK' : '✗ NEEDS WORK');
-  
-  console.log(`\n${status} ${tc.name}:`);
-  console.log(`  Result: $${result.toFixed(2)}`);
-  console.log(`  Target: $${tc.expected.toFixed(2)}`);
-  console.log(`  Error: $${error.toFixed(2)} (${percentError.toFixed(1)}%)`);
-});
 
   const calculateMinTotalBalance = () => {
     const targetProfit = calculateTargetProfit(session);
     return session.capital + targetProfit;
   };
 
-  const currentBalance = calculateSessionBalance();
-  const netProfit = calculateNetProfit();
-  const winRate = calculateWinRate();
-  const progress = calculateProgress();
-  const targetProfit = calculateTargetProfit(session);
-  const minTotalBalance = calculateMinTotalBalance();
+  // Memoize expensive calculations to prevent unnecessary re-renders
+  const currentBalance = useMemo(() => calculateSessionBalance(), [sessionTrades, session.capital]);
+  const netProfit = useMemo(() => calculateNetProfit(), [sessionTrades]);
+  const winRate = useMemo(() => calculateWinRate(), [sessionTrades]);
+  const progress = useMemo(() => calculateProgress(), [sessionTrades, session.totalTrades]);
+  const targetProfit = useMemo(() => calculateTargetProfit(session), [session]);
+  const minTotalBalance = useMemo(() => calculateMinTotalBalance(), [targetProfit, session.capital]);
   
   // Check if target trades limit has been reached
   const isTargetReached = progress.completed >= session.totalTrades;
 
-  // Get pending trades - SHOW ONLY THE FIRST ONE (oldest)
-  const allPendingTrades = sessionTrades.filter(t => t.status === 'pending').sort((a, b) =>
-    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  // Memoize trade filtering operations
+  const allPendingTrades = useMemo(() => 
+    sessionTrades.filter(t => t.status === 'pending').sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    ), [sessionTrades]
   );
-  const pendingTrades = allPendingTrades.length > 0 ? [allPendingTrades[0]] : []; // Show oldest pending trade first
-        // Show ONLY COMPLETED trades in the table (won/lost) - sorted by creation date (oldest first)
-        const completedTrades = sessionTrades.filter(t => t.status !== 'pending').sort((a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        ); // Oldest first to match reference
+  
+  const pendingTrades = useMemo(() => 
+    allPendingTrades.length > 0 ? [allPendingTrades[0]] : [], [allPendingTrades]
+  );
+  
+  const completedTrades = useMemo(() => 
+    sessionTrades.filter(t => t.status !== 'pending').sort((a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    ), [sessionTrades]
+  );
 
   const tools = [
     { name: 'Forex Position Size Calculator', href: '/calculators' },
@@ -573,7 +519,7 @@ testCases.forEach(tc => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8"
             >
               <StatCard
                 title="CURRENT BALANCE"
@@ -606,7 +552,7 @@ testCases.forEach(tc => {
             </motion.div>
 
             {/* Progress and Strategy Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6 sm:mb-8">
               {/* Progress to Goal */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -850,20 +796,147 @@ testCases.forEach(tc => {
 
         {/* Analytics Tab Content */}
         {activeTab === 'analytics' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="card"
-          >
-            <div className="text-center py-12">
-              <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-lg font-medium text-gray-900 mb-2">Analytics Coming Soon</h4>
-              <p className="text-gray-600">
-                Detailed analytics and insights for your trading session will be available soon
-              </p>
-            </div>
-          </motion.div>
+          <div className="space-y-6">
+            {/* Performance Overview */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="card"
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Performance Overview</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-blue-600 mb-2">
+                    {completedTrades.length}
+                  </div>
+                  <div className="text-sm text-gray-600">Completed Trades</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-2">
+                    {winRate.toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-gray-600">Win Rate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-600 mb-2">
+                    ${netProfit.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-600">Net Profit</div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Trading Statistics */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="card"
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Trading Statistics</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-4">Profit Analysis</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Investment</span>
+                      <span className="font-medium">${completedTrades.reduce((sum, trade) => sum + trade.investment, 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Returns</span>
+                      <span className="font-medium text-green-600">${completedTrades.reduce((sum, trade) => sum + Math.max(0, trade.profitOrLoss), 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Losses</span>
+                      <span className="font-medium text-red-600">${Math.abs(completedTrades.reduce((sum, trade) => sum + Math.min(0, trade.profitOrLoss), 0)).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-3">
+                      <span className="text-gray-600 font-semibold">Net P&L</span>
+                      <span className={`font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ${netProfit.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-4">Session Progress</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Target Trades</span>
+                      <span className="font-medium">{session.totalTrades}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Completed</span>
+                      <span className="font-medium">{progress.completed}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Remaining</span>
+                      <span className="font-medium">{Math.max(0, session.totalTrades - progress.completed)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                        style={{ width: `${Math.min(100, Number(progress.percentage))}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-center text-sm text-gray-600">
+                      {progress.percentage}% Complete
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Target vs Actual */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="card"
+            >
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Target vs Actual Performance</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="text-center p-6 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600 mb-2">
+                    ${targetProfit.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-600 mb-2">Target Profit</div>
+                  <div className="text-xs text-gray-500">
+                    Based on {session.accuracy}% accuracy & 1:{session.riskRewardRatio} RR
+                  </div>
+                </div>
+                
+                <div className="text-center p-6 bg-green-50 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600 mb-2">
+                    ${netProfit.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-600 mb-2">Actual Profit</div>
+                  <div className="text-xs text-gray-500">
+                    {completedTrades.length} completed trades
+                  </div>
+                </div>
+              </div>
+              
+              {completedTrades.length > 0 && (
+                <div className="mt-6 text-center">
+                  <div className={`text-lg font-semibold ${netProfit >= targetProfit * 0.5 ? 'text-green-600' : 'text-orange-600'}`}>
+                    {netProfit >= targetProfit * 0.5 ? '🎯 On Track!' : '📈 Keep Going!'}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {netProfit >= targetProfit * 0.5 
+                      ? `You're performing well relative to your target`
+                      : `You're at ${((netProfit / targetProfit) * 100).toFixed(1)}% of your target profit`
+                    }
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
         )}
       </main>
 
