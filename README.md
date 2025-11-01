@@ -199,7 +199,6 @@ const marketData = await fetchMarketData(symbol);
 // TODO: Replace with real database
 const trades = await api.getTrades(userId);
 ```
-
 ### Planned Features
 - **Real Database**: MongoDB integration with user data migration
 - **Live Market Data**: WebSocket connections for real-time crypto prices
