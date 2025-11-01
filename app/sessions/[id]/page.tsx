@@ -92,49 +92,11 @@ export default function SessionDetailPage() {
 
   const calculateTargetProfit = useCallback((sessionData: TradingSession): number => {
     const { capital, totalTrades, accuracy, riskRewardRatio } = sessionData;
-  
-    // Input validation
-    if (!capital || capital <= 0 || !totalTrades || totalTrades <= 0) {
-      return 0;
-    }
-    
-    if (accuracy < 0 || accuracy > 100 || !riskRewardRatio || riskRewardRatio <= 0) {
-      return 0;
-    }
-  
     const winRate = accuracy / 100;
-    
-    // Calculate expected value per trade
     const expectedValue = (winRate * riskRewardRatio) - (1 - winRate);
-    
-    // If expected value is negative or zero, no profit expected
-    if (expectedValue <= 0) {
-      console.warn('Negative expected value - strategy not profitable');
-      return 0;
-    }
-    
-    // Calculate risk amount per trade (2% of capital as base)
-    const riskPerTrade = capital * 0.02;
-    
-    // Expected profit per trade
+    const riskPerTrade = capital * 0.02; // 2% of capital
     const profitPerTrade = riskPerTrade * expectedValue;
-    
-    // Total expected profit = profit per trade * number of trades
-    // This assumes each trade risks the same percentage of INITIAL capital (not compounding)
     const totalExpectedProfit = profitPerTrade * totalTrades;
-  
-    console.log('Target Profit Calculation:', {
-      capital: `${capital.toFixed(2)}`,
-      trades: totalTrades,
-      winRate: `${(winRate * 100).toFixed(1)}%`,
-      rrRatio: `1:${riskRewardRatio}`,
-      expectedValue: expectedValue.toFixed(4),
-      riskPerTrade: `${riskPerTrade.toFixed(2)}`,
-      profitPerTrade: `${profitPerTrade.toFixed(2)}`,
-      targetProfit: `${totalExpectedProfit.toFixed(2)}`,
-      targetBalance: `${(capital + totalExpectedProfit).toFixed(2)}`
-    });
-  
     return totalExpectedProfit;
   }, []);
 
@@ -317,6 +279,11 @@ export default function SessionDetailPage() {
   const minTotalBalance = useMemo(
     () => calculateMinTotalBalance(),
     [calculateMinTotalBalance]
+  );
+  // Target net profit
+  const total = useMemo(
+    () => targetProfit + minTotalBalance,
+    [targetProfit, minTotalBalance]
   );
 
   // Check if target trades limit has been reached
