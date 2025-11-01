@@ -92,58 +92,11 @@ export default function SessionDetailPage() {
 
   const calculateTargetProfit = useCallback((sessionData: TradingSession): number => {
     const { capital, totalTrades, accuracy, riskRewardRatio } = sessionData;
-
-    // Input validation
-    if (!capital || capital <= 0 || !totalTrades || totalTrades <= 0) {
-      return 0;
-    }
-
-    if (accuracy < 0 || accuracy > 100 || !riskRewardRatio || riskRewardRatio <= 0) {
-      return 0;
-    }
-
     const winRate = accuracy / 100;
-
-    // REFERENCE WEBSITE FORMULA: Uses compounding with geometric mean
-    // IMPORTANT: Reference uses a FIXED 60% win rate assumption for target calculation
-    // regardless of the "Required ITM" setting. The ITM setting is just the minimum
-    // acceptable win rate, but the target assumes better performance (60%).
-    //
-    // Formula: FinalBalance = InitialBalance × (1 + RR × r)^6 × (1 - r)^4
-    // Where:
-    //   r = 6% base risk
-    //   Assumes 6 wins, 4 losses out of 10 trades (60% win rate)
-    //   This gives the constant 2.1079× multiplier (110.79% return)
-
-    const baseRisk = 0.06; // 6% risk per trade for target calculation
-    const targetWinRate = 0.60; // Fixed 60% win rate for target (not user's ITM setting!)
-    const expectedWins = totalTrades * targetWinRate;
-    const expectedLosses = totalTrades * (1 - targetWinRate);
-
-    // Calculate target multiplier using geometric mean
-    const winMultiplier = 1 + (riskRewardRatio * baseRisk);  // e.g., 1 + (3 × 0.06) = 1.18
-    const lossMultiplier = 1 - baseRisk;  // e.g., 1 - 0.06 = 0.94
-
-    const targetMultiplier = Math.pow(winMultiplier, expectedWins) * Math.pow(lossMultiplier, expectedLosses);
-
-    const targetBalance = capital * targetMultiplier;
-    const totalExpectedProfit = targetBalance - capital;
-
-    console.log('Target Profit Calculation (Compounding Model):', {
-      capital: `$${capital.toFixed(2)}`,
-      trades: totalTrades,
-      winRate: `${(winRate * 100).toFixed(1)}%`,
-      rrRatio: `1:${riskRewardRatio}`,
-      baseRisk: `${(baseRisk * 100).toFixed(0)}%`,
-      expectedWins: expectedWins.toFixed(2),
-      expectedLosses: expectedLosses.toFixed(2),
-      winMultiplier: winMultiplier.toFixed(4),
-      lossMultiplier: lossMultiplier.toFixed(4),
-      targetMultiplier: targetMultiplier.toFixed(6),
-      targetBalance: `$${targetBalance.toFixed(2)}`,
-      targetProfit: `$${totalExpectedProfit.toFixed(2)}`
-    });
-
+    const expectedValue = (winRate * riskRewardRatio) - (1 - winRate);
+    const riskPerTrade = capital * 0.02; // 2% of capital
+    const profitPerTrade = riskPerTrade * expectedValue;
+    const totalExpectedProfit = profitPerTrade * totalTrades;
     return totalExpectedProfit;
   }, []);
 
@@ -333,6 +286,11 @@ export default function SessionDetailPage() {
   const minTotalBalance = useMemo(
     () => calculateMinTotalBalance(),
     [calculateMinTotalBalance]
+  );
+  // Target net profit
+  const total = useMemo(
+    () => targetProfit + minTotalBalance,
+    [targetProfit, minTotalBalance]
   );
 
   // Check if target trades limit has been reached
