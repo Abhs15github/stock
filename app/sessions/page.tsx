@@ -63,34 +63,103 @@ export default function SessionsPage() {
 
   const stats = getSessionStats();
 
-  const calculateProgress = (session: any) => {
-    // Calculate ITM progress based on accuracy
-    const itmProgress = session.accuracy || 0;
+  // CORRECTED CALCULATION LOGIC
+  const calculateSessionMetrics = (session: any) => {
+    // Get trades array (assuming it exists in session object)
+    const trades = session.trades || [];
+    
+    // Filter completed trades (those with W or L result)
+    const completedTrades = trades.filter((t: any) => t.result === 'W' || t.result === 'L');
+    
+    // Calculate wins and losses
+    const wins = completedTrades.filter((t: any) => t.result === 'W').length;
+    const losses = completedTrades.filter((t: any) => t.result === 'L').length;
+    
+    // Win Rate Calculation
+    const winRate = completedTrades.length > 0 
+      ? (wins / completedTrades.length) * 100 
+      : 0;
+    
+    // Current Balance (from last trade or initial capital)
+    const currentBalance = trades.length > 0 && trades[trades.length - 1].balance
+      ? trades[trades.length - 1].balance 
+      : session.capital;
+    
+    // Net Profit
+    const netProfit = currentBalance - session.capital;
+    
+    // Progress tracking
+    const targetTrades = session.totalTrades || 10;
+    const progress = {
+      completed: completedTrades.length,
+      target: targetTrades,
+      percentage: (completedTrades.length / targetTrades) * 100
+    };
+    
+    // Required ITM (In-The-Money) - Breakeven win rate
+    // Formula: 1 / (RR + 1)
+    const rr = session.riskRewardRatio || 3;
+    const requiredITM = (1 / (rr + 1)) * 100; // For 1:3 RR = 25%
+    
+    // Target ITM (usually slightly higher than required for profitability)
+    const targetITM = session.targetITM || requiredITM + 5; // e.g., 30% for 1:3 RR
+    
+    // Calculate theoretical target profit based on expected value
+    // If all target trades are completed with current win rate
+    const riskPercentage = session.riskPercentage || 0.02; // 2% default
+    const avgStakeIfStarted = session.capital * riskPercentage;
+    
+    // Expected value per trade
+    const avgWin = avgStakeIfStarted * rr;
+    const avgLoss = avgStakeIfStarted;
+    const expectedValuePerTrade = (winRate / 100) * avgWin - ((100 - winRate) / 100) * avgLoss;
+    
+    // Target profit if all trades completed
+    const projectedTotalProfit = expectedValuePerTrade * targetTrades;
+    const targetBalance = session.capital + projectedTotalProfit;
+    
     return {
-      itm: itmProgress.toFixed(1),
-      trades: `${Math.floor((session.totalTrades * session.accuracy) / 100)}/${session.totalTrades}`
+      currentBalance,
+      netProfit,
+      winRate,
+      wins,
+      losses,
+      progress,
+      requiredITM,
+      targetITM,
+      targetBalance,
+      completedTrades: completedTrades.length,
+      riskRewardRatio: rr
+    };
+  };
+
+  const calculateProgress = (session: any) => {
+    const metrics = calculateSessionMetrics(session);
+    return {
+      itm: metrics.winRate.toFixed(1),
+      trades: `${metrics.completedTrades}/${metrics.progress.target}`
     };
   };
 
   const calculateWinRate = (session: any) => {
-    return session.accuracy || 0;
+    const metrics = calculateSessionMetrics(session);
+    return metrics.winRate;
   };
 
   const calculateTargetProfit = (session: any) => {
-    // Calculate target profit based on RR and accuracy
-    const winRate = session.accuracy / 100;
-    const avgWin = session.capital * 0.02 * session.riskRewardRatio;
-    const avgLoss = session.capital * 0.02;
-    const expectedValue = (winRate * avgWin) - ((1 - winRate) * avgLoss);
-    return expectedValue * session.totalTrades;
+    const metrics = calculateSessionMetrics(session);
+    // Return the profit amount, not the balance
+    return metrics.targetBalance - session.capital;
   };
 
   const calculateCurrentBalance = (session: any) => {
-    // Calculate current balance based on completed trades
-    const completedTrades = Math.floor((session.totalTrades * session.accuracy) / 100);
-    const targetProfit = calculateTargetProfit(session);
-    const currentProgress = (completedTrades / session.totalTrades) * targetProfit;
-    return session.capital + currentProgress;
+    const metrics = calculateSessionMetrics(session);
+    return metrics.currentBalance;
+  };
+
+  const getNetProfit = (session: any) => {
+    const metrics = calculateSessionMetrics(session);
+    return metrics.netProfit;
   };
 
   return (
@@ -172,6 +241,8 @@ export default function SessionsPage() {
                 const winRate = calculateWinRate(session);
                 const targetProfit = calculateTargetProfit(session);
                 const currentBalance = calculateCurrentBalance(session);
+                const netProfit = getNetProfit(session);
+                const metrics = calculateSessionMetrics(session);
 
                 return (
                   <motion.div
@@ -221,33 +292,46 @@ export default function SessionsPage() {
 
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-xs text-gray-600">ITM Progress</p>
-                          <p className="text-sm font-medium">{progress.itm}% / {winRate.toFixed(1)}%</p>
+                          <p className="text-xs text-gray-600">Win Rate</p>
+                          <p className="text-sm font-medium">{progress.itm}%</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-gray-600">Trades</p>
+                          <p className="text-xs text-gray-600">Progress</p>
                           <p className="text-sm font-medium">{progress.trades}</p>
                         </div>
                       </div>
 
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">{progress.trades} trades</span>
-                        <span className="text-gray-600">{winRate.toFixed(1)}% win rate</span>
+                      <div className="flex justify-between items-center text-sm">
+                        <div>
+                          <span className="text-gray-600">W/L: {metrics.wins}/{metrics.losses}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">RR: 1:{metrics.riskRewardRatio}</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Session Metrics */}
-                    <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                      <div>
-                        <p className="text-xs text-gray-600">Current</p>
-                        <p className="text-lg font-bold text-gray-900">
-                          ${currentBalance.toFixed(0)}
-                        </p>
+                    <div className="space-y-2 pt-4 border-t border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-xs text-gray-600">Current Balance</p>
+                          <p className="text-lg font-bold text-gray-900">
+                            ${currentBalance.toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-600">Net P/L</p>
+                          <p className={`text-lg font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {netProfit >= 0 ? '+' : ''}${netProfit.toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-600">Target Profit</p>
-                        <p className="text-lg font-bold text-green-600">
-                          ${targetProfit.toFixed(0)}
+                      
+                      <div className="pt-2 border-t border-gray-100">
+                        <p className="text-xs text-gray-600">Projected Profit</p>
+                        <p className="text-sm font-semibold text-blue-600">
+                          ${targetProfit.toFixed(2)}
                         </p>
                       </div>
                     </div>
