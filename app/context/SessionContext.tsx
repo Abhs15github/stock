@@ -74,52 +74,16 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const calculateRiskPercentage = (session: TradingSession): number => {
-    // Lovely Profits appears to use a fixed risk model based on RR ratio
-    // For 1:1 RR with 50% accuracy, they show 60.5% profit over 10 trades
-    // This suggests they use ~14.7% risk with assumed 70% win rate
+  const calculateRiskPercentage = (): number => {
+    // FIXED RISK MODEL
+    // Uses consistent 15% risk per trade for steady, predictable growth
 
-    const winRate = session.accuracy / 100;
-    const rrRatio = session.riskRewardRatio;
-
-    // REFERENCE WEBSITE FORMULA: Uses aggressive risk percentage
-    // Observed range: 15-51%, averaging around 30%
-
-    // Calculate Kelly Criterion
-    const kellyPercent = (winRate * rrRatio - (1 - winRate)) / rrRatio;
-
-    let riskPercent;
-
-    if (kellyPercent <= 0) {
-      // Strategy not profitable, use minimum risk
-      riskPercent = 0.15;
-    } else {
-      // Use aggressive multiplier on Kelly to match reference website
-      // Reference uses 30-40% on average, which is ~4.5x Kelly for typical values
-      riskPercent = kellyPercent * 4.5;
-
-      // Cap at 50% to match observed maximum in reference website
-      riskPercent = Math.min(riskPercent, 0.50);
-
-      // Ensure minimum of 15%
-      riskPercent = Math.max(riskPercent, 0.15);
-    }
-
-    console.log('Risk calculation:', {
-      winRate: `${(winRate * 100).toFixed(1)}%`,
-      rrRatio: `1:${rrRatio}`,
-      kellyPercent: `${(kellyPercent * 100).toFixed(2)}%`,
-      finalRiskPercent: `${(riskPercent * 100).toFixed(2)}%`,
-      riskAmount: `$${(session.capital * riskPercent).toFixed(2)}`,
-      note: 'Using Lovely Profits-style fixed risk model'
-    });
-
-    return riskPercent;
+    return 0.15; // Fixed 15% risk per trade
   };
 
   const createNextPendingTrade = async (session: TradingSession) => {
     try {
-      const riskPercent = calculateRiskPercentage(session);
+      const riskPercent = calculateRiskPercentage();
       const allTrades = storageUtils.getTrades();
       
       // Get existing trades for this session

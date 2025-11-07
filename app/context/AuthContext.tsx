@@ -21,14 +21,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      // Check if session is expired
-      if (storageUtils.isSessionExpired()) {
-        storageUtils.setCurrentUser(null);
-        setUser(null);
-      } else {
-        const currentUser = storageUtils.getCurrentUser();
-        setUser(currentUser);
-      }
+      // === COMMENTED OUT FOR LOCAL DEVELOPMENT ===
+      // Auto-login with mock user for development
+      const mockUser: User = {
+        id: 'dev-user-001',
+        email: 'dev@test.com',
+        password: 'password',
+        name: 'Dev User',
+        createdAt: new Date().toISOString(),
+      };
+
+      setUser(mockUser);
+      storageUtils.setCurrentUser(mockUser);
+      // Set long expiry for dev (24 hours)
+      storageUtils.setSessionExpiry(Date.now() + (24 * 60 * 60 * 1000));
+
+      // === ORIGINAL CODE (COMMENTED OUT) ===
+      // // Check if session is expired
+      // if (storageUtils.isSessionExpired()) {
+      //   storageUtils.setCurrentUser(null);
+      //   setUser(null);
+      // } else {
+      //   const currentUser = storageUtils.getCurrentUser();
+      //   setUser(currentUser);
+      // }
     } catch (error) {
       console.error('Error loading current user:', error);
     } finally {
@@ -36,17 +52,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // === COMMENTED OUT FOR LOCAL DEVELOPMENT ===
   // Check session expiry every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (user && storageUtils.isSessionExpired()) {
-        setUser(null);
-        storageUtils.setCurrentUser(null);
-      }
-    }, 60000); // Check every minute
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     if (user && storageUtils.isSessionExpired()) {
+  //       setUser(null);
+  //       storageUtils.setCurrentUser(null);
+  //     }
+  //   }, 60000); // Check every minute
 
-    return () => clearInterval(interval);
-  }, [user]);
+  //   return () => clearInterval(interval);
+  // }, [user]);
 
   const register = async (email: string, password: string, name: string): Promise<{ success: boolean; message: string }> => {
     try {

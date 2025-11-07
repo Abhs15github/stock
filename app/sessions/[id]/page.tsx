@@ -92,11 +92,38 @@ export default function SessionDetailPage() {
 
   const calculateTargetProfit = useCallback((sessionData: TradingSession): number => {
     const { capital, totalTrades, accuracy, riskRewardRatio } = sessionData;
-    const winRate = accuracy / 100;
-    const expectedValue = (winRate * riskRewardRatio) - (1 - winRate);
-    const riskPerTrade = capital * 0.02; // 2% of capital
-    const profitPerTrade = riskPerTrade * expectedValue;
-    const totalExpectedProfit = profitPerTrade * totalTrades;
+
+    // Input validation
+    if (!capital || capital <= 0 || !totalTrades || totalTrades <= 0) {
+      return 0;
+    }
+
+    if (accuracy < 0 || accuracy > 100 || !riskRewardRatio || riskRewardRatio <= 0) {
+      return 0;
+    }
+
+    // REFERENCE WEBSITE FORMULA: Uses FIXED 60% win rate for TARGET calculation
+    // This gives an aspirational target based on good performance benchmark
+    // Formula: FinalBalance = InitialBalance × (1 + RR × r)^wins × (1 - r)^losses
+    // Where:
+    //   r = 6% base risk per trade
+    //   Assumes 60% win rate: 6 wins, 4 losses out of 10 trades
+    //   This gives constant 2.1079× multiplier (110.79% return)
+
+    const baseRisk = 0.06; // 6% base risk per trade for target calculation
+    const fixedWinRate = 0.60; // Fixed 60% win rate benchmark for aspirational target
+    const expectedWins = totalTrades * fixedWinRate;
+    const expectedLosses = totalTrades * (1 - fixedWinRate);
+
+    // Calculate target multiplier using geometric mean
+    const winMultiplier = 1 + (riskRewardRatio * baseRisk);  // e.g., 1 + (3 × 0.06) = 1.18
+    const lossMultiplier = 1 - baseRisk;  // e.g., 1 - 0.06 = 0.94
+
+    const targetMultiplier = Math.pow(winMultiplier, expectedWins) * Math.pow(lossMultiplier, expectedLosses);
+
+    const targetBalance = capital * targetMultiplier;
+    const totalExpectedProfit = targetBalance - capital;
+
     return totalExpectedProfit;
   }, []);
 
@@ -116,24 +143,11 @@ export default function SessionDetailPage() {
   }, [session, sessionTrades, calculateTargetProfit]);
 
   // Calculate risk percentage for dynamic stake calculation
-  const calculateRiskPercentage = useCallback((session: TradingSession) => {
-    // REFERENCE WEBSITE FORMULA: Uses higher, more aggressive risk percentage
-    // Observed risk percentages range from 15% to 51%, averaging around 30%
-    // This matches the reference website's actual trade behavior
+  const calculateRiskPercentage = useCallback(() => {
+    // FIXED RISK MODEL
+    // Uses consistent 15% risk per trade for steady, predictable growth
 
-    const winRate = session.accuracy / 100;
-    const kelly =
-      (winRate * session.riskRewardRatio - (1 - winRate)) /
-      session.riskRewardRatio;
-
-    if (kelly <= 0) return 0.15; // Default 15% if Kelly is negative (minimum from reference)
-
-    // Use full Kelly or higher for aggressive compounding (matching reference)
-    // Reference website uses 30-40% on average
-    const aggressiveRisk = kelly * 4.5; // Multiplier to reach ~30% range
-
-    // Cap at 50% to match observed maximum in reference
-    return Math.min(Math.max(aggressiveRisk, 0.15), 0.50);
+    return 0.15; // Fixed 15% risk per trade
   }, []);
 
   const handleRecordResult = useCallback(
@@ -176,7 +190,7 @@ export default function SessionDetailPage() {
 
           if (!isTargetNowReached) {
             // Only create next trade if target not reached
-            const riskPercent = calculateRiskPercentage(session);
+            const riskPercent = calculateRiskPercentage();
             const nextTradeResult = await createNextPendingTrade(
               session.id,
               session.capital,
@@ -321,7 +335,7 @@ export default function SessionDetailPage() {
         .filter((t) => t.status !== "pending")
         .sort(
           (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         ),
     [sessionTrades]
   );
@@ -641,7 +655,7 @@ export default function SessionDetailPage() {
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                       <span className="text-sm text-gray-600">
-                        Required ITM
+                        Target ITM
                       </span>
                     </div>
                     <p className="text-2xl font-bold">
