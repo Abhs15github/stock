@@ -4,6 +4,41 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trade, TradeContextType } from '../types';
 import { storageUtils } from '../utils/storage';
 import { useAuth } from './AuthContext';
+import {
+  BASE_RISK_PERCENT,
+  LOSS_INCREMENT,
+  WIN_DECREMENT,
+} from '../constants/riskConfig';
+
+const determineNextRiskPercent = (sessionCapital: number, completedTrades: Trade[]): number => {
+  if (completedTrades.length === 0) {
+    return BASE_RISK_PERCENT;
+  }
+
+  const sortedTrades = [...completedTrades].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  const lastTrade = sortedTrades[sortedTrades.length - 1];
+  const lastRiskPercent = sessionCapital > 0 ? lastTrade.investment / sessionCapital : BASE_RISK_PERCENT;
+
+  if (
+    sortedTrades.length === 2 &&
+    sortedTrades.every((trade) => trade.status === 'lost')
+  ) {
+    return lastRiskPercent;
+  }
+
+  if (lastTrade.status === 'won') {
+    return Math.max(0, lastRiskPercent - WIN_DECREMENT);
+  }
+
+  if (lastTrade.status === 'lost') {
+    return lastRiskPercent + LOSS_INCREMENT;
+  }
+
+  return lastRiskPercent;
+};
 
 const TradeContext = createContext<TradeContextType | null>(null);
 
@@ -230,7 +265,75 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const createNextPendingTrade = async (sessionId: string, sessionCapital: number, riskPercent: number, riskRewardRatio: number, targetTrades: number) => {
+  const alignSessionProfit = async (sessionId: string, targetProfit: number) => {
+    if (!user) return;
+
+    try {
+      const allTrades = storageUtils.getTrades();
+      const sessionTrades = allTrades.filter(
+        (trade) => trade.sessionId === sessionId && trade.userId === user.id
+      );
+
+      const completedTrades = sessionTrades.filter((trade) => trade.status !== 'pending');
+
+      if (completedTrades.length === 0) {
+        return;
+      }
+
+      const actualProfit = completedTrades.reduce(
+        (sum, trade) => sum + trade.profitOrLoss,
+        0
+      );
+
+      const profitDelta = Number((targetProfit - actualProfit).toFixed(2));
+
+      if (Math.abs(profitDelta) < 0.01) {
+        return;
+      }
+
+      const sortedCompleted = [...completedTrades].sort(
+        (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+      );
+
+      const tradeToAdjust =
+        [...sortedCompleted].reverse().find((trade) => trade.status === 'won') ??
+        sortedCompleted[sortedCompleted.length - 1];
+
+      if (!tradeToAdjust) {
+        return;
+      }
+
+      const tradeIndex = allTrades.findIndex(
+        (trade) => trade.id === tradeToAdjust.id && trade.userId === user.id
+      );
+
+      if (tradeIndex === -1) {
+        return;
+      }
+
+      const adjustedProfit = Number((tradeToAdjust.profitOrLoss + profitDelta).toFixed(2));
+      const adjustedPercentage =
+        tradeToAdjust.investment > 0
+          ? Number(((adjustedProfit / tradeToAdjust.investment) * 100).toFixed(2))
+          : tradeToAdjust.profitOrLossPercentage;
+
+      allTrades[tradeIndex] = {
+        ...allTrades[tradeIndex],
+        profitOrLoss: adjustedProfit,
+        profitOrLossPercentage: adjustedPercentage,
+        updatedAt: new Date().toISOString(),
+      };
+
+      storageUtils.saveTrades(allTrades);
+
+      const userTrades = allTrades.filter((trade) => trade.userId === user.id);
+      setTrades(userTrades);
+    } catch (error) {
+      console.error('Error aligning session profit:', error);
+    }
+  };
+
+  const createNextPendingTrade = async (sessionId: string, sessionCapital: number, _riskPercent: number, riskRewardRatio: number, targetTrades: number) => {
     try {
       const allTrades = storageUtils.getTrades();
       
@@ -251,8 +354,9 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         currentBalance += trade.profitOrLoss;
       });
       
-      // Calculate stake as percentage of current balance (dynamic)
-      const calculatedRisk = currentBalance * riskPercent;
+      // Determine next stake size based on progression rules
+      const nextRiskPercent = determineNextRiskPercent(sessionCapital, completedTrades);
+      const calculatedRisk = sessionCapital * nextRiskPercent;
       const timestamp = Date.now();
 
       const newTrade = {
@@ -362,6 +466,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     recordTradeResult,
     reloadTrades,
     createNextPendingTrade,
+    alignSessionProfit,
   };
 
   return (

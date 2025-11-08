@@ -72,6 +72,7 @@ export interface TradeContextType {
     activeInvestment: number;
   };
   getSessionTrades: (sessionId: string) => Trade[];
+  alignSessionProfit: (sessionId: string, targetProfit: number) => Promise<void>;
 }
 
 export interface BBTCalculation {

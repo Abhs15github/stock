@@ -29,6 +29,10 @@ export class NeuralNetworkModel {
   private momentum: number = 0.9;
   private regularization: number = 0.001;
 
+  // Aspirational performance assumptions derived from reference model
+  private readonly benchmarkWinRate = 0.6; // 60%.
+  private readonly baseRiskPerTrade = 0.06; // 6% capital at risk per trade.
+
   constructor() {
     this.weights = this.initializeWeights();
   }
@@ -111,8 +115,25 @@ export class NeuralNetworkModel {
     const { output } = this.forwardPass(inputs);
     
     // Denormalize output to actual profit range
-    // Assuming max profit of 10x capital
-    return output * capital * 10;
+    // Base the denormalisation on benchmark growth assumptions to keep outputs
+    // aligned with deterministic expectations even prior to training.
+    const aspirationalTarget = this.calculateAspirationalTarget(capital, totalTrades, riskRewardRatio);
+    return output * aspirationalTarget;
+  }
+
+  private calculateAspirationalTarget(capital: number, totalTrades: number, riskRewardRatio: number): number {
+    if (capital <= 0 || totalTrades <= 0 || riskRewardRatio <= 0) {
+      return 0;
+    }
+
+    const expectedWins = totalTrades * this.benchmarkWinRate;
+    const expectedLosses = totalTrades - expectedWins;
+
+    const winMultiplier = 1 + riskRewardRatio * this.baseRiskPerTrade;
+    const lossMultiplier = 1 - this.baseRiskPerTrade;
+
+    const targetBalance = capital * Math.pow(winMultiplier, expectedWins) * Math.pow(lossMultiplier, expectedLosses);
+    return Math.max(0, targetBalance - capital);
   }
 
   public train(trainingData: TrainingData[], epochs: number = 1000): void {
@@ -127,7 +148,8 @@ export class NeuralNetworkModel {
       for (const data of shuffledData) {
         const inputs = [data.capital, data.totalTrades, data.accuracy, data.riskRewardRatio];
         const normalizedInputs = this.normalizeInputs(inputs);
-        const target = data.expectedProfit / (data.capital * 10); // Normalize target
+        const baseTarget = this.calculateAspirationalTarget(data.capital, data.totalTrades, data.riskRewardRatio);
+        const target = baseTarget === 0 ? 0 : data.expectedProfit / baseTarget; // Normalize target around deterministic expectation
         
         // Forward pass
         const { hidden, output } = this.forwardPass(inputs);
@@ -166,8 +188,8 @@ export class NeuralNetworkModel {
     
     // Calculate hidden layer gradients
     const hiddenGradients = hidden.map((h, i) => {
-      const weightGradient = outputGradient * this.weights.hiddenLayer[i][0];
-      return weightGradient * this.reluDerivative(h);
+        const weightGradient = outputGradient * this.weights.hiddenLayer[i][0];
+        return weightGradient * this.reluDerivative(h);
     });
     
     // Update input layer weights
@@ -190,6 +212,10 @@ export class NeuralNetworkModel {
     
     for (const data of testData) {
       const prediction = this.predict(data.capital, data.totalTrades, data.accuracy, data.riskRewardRatio);
+      if (data.expectedProfit === 0) {
+        continue;
+      }
+
       const actualError = Math.abs(prediction - data.expectedProfit) / data.expectedProfit;
       totalError += actualError;
       totalSamples++;
@@ -211,6 +237,8 @@ export class NeuralNetworkModel {
 export class HybridProfitCalculator {
   private neuralNetwork: NeuralNetworkModel;
   private traditionalFormula: (capital: number, trades: number, accuracy: number, rr: number) => number;
+  private readonly benchmarkWinRate = 0.6;
+  private readonly baseRiskPerTrade = 0.06;
 
   constructor() {
     this.neuralNetwork = new NeuralNetworkModel();
@@ -219,38 +247,19 @@ export class HybridProfitCalculator {
 
   private createTraditionalFormula() {
     return (capital: number, totalTrades: number, accuracy: number, riskRewardRatio: number): number => {
-      const winRate = accuracy / 100;
-      const kelly = (winRate * riskRewardRatio - (1 - winRate)) / riskRewardRatio;
-      
-      if (kelly <= 0) return 0;
-
-      let kellyFraction, scalingFactor, accuracyExponent, rrExponent;
-
-      if (riskRewardRatio <= 2) {
-        kellyFraction = 0.20;
-        scalingFactor = 0.12;
-        accuracyExponent = 1.1;
-        rrExponent = 0.5;
-      } else if (riskRewardRatio <= 4) {
-        kellyFraction = 0.25;
-        scalingFactor = 0.18;
-        accuracyExponent = 1.2;
-        rrExponent = 0.6;
-      } else {
-        kellyFraction = 0.30;
-        scalingFactor = 0.25;
-        accuracyExponent = 1.25;
-        rrExponent = 0.65;
+      if (capital <= 0 || totalTrades <= 0 || riskRewardRatio <= 0) {
+        return 0;
       }
 
-      const fractionalKelly = kelly * kellyFraction;
-      const expectedValue = (winRate * riskRewardRatio) - (1 - winRate);
-      const accuracyBoost = Math.pow(winRate, accuracyExponent);
-      const rrBoost = Math.pow(riskRewardRatio, rrExponent);
-      const perTradeReturn = fractionalKelly * expectedValue * accuracyBoost * rrBoost * scalingFactor;
+      const wins = totalTrades * this.benchmarkWinRate;
+      const losses = totalTrades - wins;
 
-      const finalBalance = capital * Math.pow(1 + perTradeReturn, totalTrades);
-      return finalBalance - capital;
+      const winMultiplier = 1 + riskRewardRatio * this.baseRiskPerTrade;
+      const lossMultiplier = 1 - this.baseRiskPerTrade;
+
+      const targetBalance = capital * Math.pow(winMultiplier, wins) * Math.pow(lossMultiplier, losses);
+
+      return Math.max(0, targetBalance - capital);
     };
   }
 
@@ -261,16 +270,26 @@ export class HybridProfitCalculator {
     riskRewardRatio: number,
     useNeuralNetwork: boolean = true
   ): number {
-    if (useNeuralNetwork) {
-      // Use neural network prediction
-      const nnPrediction = this.neuralNetwork.predict(capital, totalTrades, accuracy, riskRewardRatio);
-      const traditionalPrediction = this.traditionalFormula(capital, totalTrades, accuracy, riskRewardRatio);
-      
-      // Weighted average: 70% neural network, 30% traditional
-      return nnPrediction * 0.7 + traditionalPrediction * 0.3;
-    } else {
-      return this.traditionalFormula(capital, totalTrades, accuracy, riskRewardRatio);
+    const traditionalPrediction = this.traditionalFormula(capital, totalTrades, accuracy, riskRewardRatio);
+
+    if (!useNeuralNetwork) {
+      return traditionalPrediction;
     }
+
+    const neuralPrediction = this.neuralNetwork.predict(capital, totalTrades, accuracy, riskRewardRatio);
+
+    if (!Number.isFinite(neuralPrediction) || neuralPrediction <= 0) {
+      return traditionalPrediction;
+    }
+
+    const blended = 0.25 * neuralPrediction + 0.75 * traditionalPrediction;
+
+    // Clamp to +/-50% of the deterministic target so the neural network cannot
+    // produce wildly unrealistic values before it is trained.
+    const lowerBound = traditionalPrediction * 0.5;
+    const upperBound = traditionalPrediction * 1.5;
+
+    return Math.min(upperBound, Math.max(lowerBound, blended));
   }
 
   public trainWithData(trainingData: TrainingData[]): void {

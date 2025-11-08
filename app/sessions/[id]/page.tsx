@@ -31,6 +31,8 @@ import {
 import { hybridCalculator } from "../../utils/neuralNetworkModel";
 import Link from "next/link";
 import { TradingSession } from "../../types";
+import { BASE_RISK_PERCENT } from "../../constants/riskConfig";
+import { storageUtils } from "../../utils/storage";
 
 export default function SessionDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -41,6 +43,7 @@ export default function SessionDetailPage() {
     recordTradeResult,
     reloadTrades,
     createNextPendingTrade,
+    alignSessionProfit,
   } = useTrade();
   const { showToast } = useToast();
   const router = useRouter();
@@ -55,6 +58,39 @@ export default function SessionDetailPage() {
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
   const [recordingTrade, setRecordingTrade] = useState<string | null>(null);
   const [sessionTrades, setSessionTrades] = useState<any[]>([]);
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    []
+  );
+
+  const formatCurrency = useCallback(
+    (value: number) => currencyFormatter.format(value),
+    [currencyFormatter]
+  );
+
+  const formatSignedCurrency = useCallback(
+    (value: number) => {
+      const absoluteFormatted = currencyFormatter.format(Math.abs(value));
+
+      if (value > 0) {
+        return `+${absoluteFormatted}`;
+      }
+
+      if (value < 0) {
+        return `-${absoluteFormatted}`;
+      }
+
+      return absoluteFormatted;
+    },
+    [currencyFormatter]
+  );
 
   // Commented out for development - skip authentication
   // useEffect(() => {
@@ -144,10 +180,8 @@ export default function SessionDetailPage() {
 
   // Calculate risk percentage for dynamic stake calculation
   const calculateRiskPercentage = useCallback(() => {
-    // FIXED RISK MODEL
-    // Uses consistent 15% risk per trade for steady, predictable growth
-
-    return 0.15; // Fixed 15% risk per trade
+    // Baseline stake defined in risk configuration
+    return BASE_RISK_PERCENT;
   }, []);
 
   const handleRecordResult = useCallback(
@@ -185,11 +219,47 @@ export default function SessionDetailPage() {
           // Reload trades first to get updated balance
           await reloadTrades();
 
-          // Check if target is now reached after this trade
-          const isTargetNowReached = checkIfTargetReached();
+          const latestTrades = (() => {
+            if (!user) return [];
+            try {
+              const allTrades = storageUtils.getTrades();
+              return allTrades.filter(
+                (trade) => trade.userId === user.id && trade.sessionId === session.id
+              );
+            } catch (error) {
+              console.error("Error fetching latest trades:", error);
+              return [];
+            }
+          })();
 
-          if (!isTargetNowReached) {
-            // Only create next trade if target not reached
+          const completedTradesAfterUpdate = latestTrades
+            .filter((trade) => trade.status !== "pending")
+            .sort(
+              (a, b) =>
+                new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+
+          const updatedNetProfit = completedTradesAfterUpdate.reduce(
+            (sum, trade) => sum + trade.profitOrLoss,
+            0
+          );
+
+          const targetBalance = session.capital + targetProfit;
+          const currentBalanceAfterUpdate = session.capital + updatedNetProfit;
+          const hasReachedTargetAfterUpdate =
+            currentBalanceAfterUpdate >= targetBalance - 0.01;
+          const hasCompletedAllTrades =
+            completedTradesAfterUpdate.length >= session.totalTrades;
+
+          if (hasReachedTargetAfterUpdate || hasCompletedAllTrades) {
+            await alignSessionProfit(session.id, targetProfit);
+            await reloadTrades();
+
+            if (hasReachedTargetAfterUpdate) {
+              showToast("🎉 Target reached! Session goal completed.", "success");
+            }
+          } else {
+            // Only create next trade if target not reached and trades remain
             const riskPercent = calculateRiskPercentage();
             const nextTradeResult = await createNextPendingTrade(
               session.id,
@@ -204,8 +274,6 @@ export default function SessionDetailPage() {
             }
 
             await reloadTrades();
-          } else {
-            showToast("🎉 Target reached! Session goal completed.", "success");
           }
         } else {
           showToast(
@@ -387,7 +455,7 @@ export default function SessionDetailPage() {
                     className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-full w-fit ${
                       session.status === "active"
                         ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-700"
+                        : "bg-blue-100 text-blue-700"
                     }`}
                   >
                     {session.status === "active" ? "Active" : "Completed"}
@@ -398,7 +466,7 @@ export default function SessionDetailPage() {
             <div className="relative">
               <button
                 onClick={() => setShowToolsDropdown(!showToolsDropdown)}
-                className="btn-secondary flex items-center space-x-2"
+                className="inline-flex items-center space-x-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:border-gray-300 hover:text-gray-900"
               >
                 <Calculator className="w-4 h-4" />
                 <span>Tools</span>
@@ -475,9 +543,10 @@ export default function SessionDetailPage() {
                   🎉 Target Reached!
                 </h4>
                 <p className="text-sm text-green-800">
-                  Your session goal has been achieved! Current balance: $
-                  {currentBalance.toFixed(2)}
-                  (Target: ${minTotalBalance.toFixed(2)})
+                  Your session goal has been achieved! Current balance: {formatCurrency(
+                    currentBalance
+                  )}{" "}
+                  (Target: {formatCurrency(minTotalBalance)})
                 </p>
               </div>
             </div>
@@ -491,40 +560,27 @@ export default function SessionDetailPage() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="mb-6"
         >
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8">
+          <nav className="inline-flex rounded-2xl bg-gray-100 p-1">
+            {(
+              [
+                { key: "dashboard" as const, label: "Dashboard" },
+                { key: "trades" as const, label: "Trade List" },
+                { key: "analytics" as const, label: "Analytics" },
+              ]
+            ).map((tab) => (
               <button
-                onClick={() => setActiveTab("dashboard")}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === "dashboard"
-                    ? "border-black text-black"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                  activeTab === tab.key
+                    ? "bg-white shadow-sm text-gray-900"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                Dashboard
+                {tab.label}
               </button>
-              <button
-                onClick={() => setActiveTab("trades")}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === "trades"
-                    ? "border-black text-black"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Trade List
-              </button>
-              <button
-                onClick={() => setActiveTab("analytics")}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === "analytics"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Analytics
-              </button>
-            </nav>
-          </div>
+            ))}
+          </nav>
         </motion.div>
 
         {/* Dashboard Tab Content */}
@@ -539,14 +595,14 @@ export default function SessionDetailPage() {
             >
               <StatCard
                 title="CURRENT BALANCE"
-                value={currentBalance.toFixed(2)}
+                value={formatCurrency(currentBalance)}
                 icon={DollarSign}
                 color="blue"
                 subtitle=""
               />
               <StatCard
                 title="NET PROFIT"
-                value={netProfit.toFixed(2)}
+                value={formatSignedCurrency(netProfit)}
                 icon={TrendingUp}
                 color={netProfit >= 0 ? "green" : "red"}
                 subtitle=""
@@ -584,13 +640,13 @@ export default function SessionDetailPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Min. Total Balance</span>
                     <span className="font-semibold">
-                      ${minTotalBalance.toFixed(2)}
+                      {formatCurrency(minTotalBalance)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Min. Total Return</span>
                     <span className="font-semibold">
-                      ${targetProfit.toFixed(2)}
+                      {formatCurrency(targetProfit)}
                     </span>
                   </div>
                 </div>
@@ -600,7 +656,7 @@ export default function SessionDetailPage() {
                     TARGET NET PROFIT
                   </div>
                   <div className="text-4xl font-bold text-blue-600">
-                    ${targetProfit.toFixed(2)}
+                    {formatCurrency(targetProfit)}
                   </div>
                 </div>
               </motion.div>
@@ -625,7 +681,7 @@ export default function SessionDetailPage() {
                       </span>
                     </div>
                     <p className="text-2xl font-bold">
-                      ${session.capital.toFixed(2)}
+                      {formatCurrency(session.capital)}
                     </p>
                   </div>
 
@@ -698,7 +754,7 @@ export default function SessionDetailPage() {
                       <div>
                         <p className="text-sm text-gray-600">Risk</p>
                         <p className="text-xl font-bold">
-                          ${trade.investment.toFixed(2)}
+                          {formatCurrency(trade.investment)}
                         </p>
                       </div>
                       <div>
@@ -706,9 +762,8 @@ export default function SessionDetailPage() {
                           Potential Return
                         </p>
                         <p className="text-xl font-bold text-green-600">
-                          +$
-                          {(trade.investment * session.riskRewardRatio).toFixed(
-                            2
+                          {formatSignedCurrency(
+                            trade.investment * session.riskRewardRatio
                           )}
                         </p>
                       </div>
@@ -861,7 +916,7 @@ export default function SessionDetailPage() {
                                 )}
                               </td>
                               <td className="py-3 px-4 text-sm">
-                                ${trade.investment.toFixed(2)}
+                                {formatCurrency(trade.investment)}
                               </td>
                               <td className="py-3 px-4">
                                 <span
@@ -871,12 +926,11 @@ export default function SessionDetailPage() {
                                       : "text-red-600"
                                   }`}
                                 >
-                                  {trade.profitOrLoss >= 0 ? "+" : ""}$
-                                  {trade.profitOrLoss.toFixed(2)}
+                                  {formatSignedCurrency(trade.profitOrLoss)}
                                 </span>
                               </td>
                               <td className="py-3 px-4 text-sm font-medium">
-                                ${runningBalance.toFixed(2)}
+                                {formatCurrency(runningBalance)}
                               </td>
                             </tr>
                           );
@@ -925,7 +979,7 @@ export default function SessionDetailPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-purple-600 mb-2">
-                    ${netProfit.toFixed(2)}
+                    {formatSignedCurrency(netProfit)}
                   </div>
                   <div className="text-sm text-gray-600">Net Profit</div>
                 </div>
@@ -952,36 +1006,38 @@ export default function SessionDetailPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Investment</span>
                       <span className="font-medium">
-                        $
-                        {completedTrades
-                          .reduce((sum, trade) => sum + trade.investment, 0)
-                          .toFixed(2)}
+                        {formatCurrency(
+                          completedTrades.reduce(
+                            (sum, trade) => sum + trade.investment,
+                            0
+                          )
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Returns</span>
                       <span className="font-medium text-green-600">
-                        $
-                        {completedTrades
-                          .reduce(
+                        {formatCurrency(
+                          completedTrades.reduce(
                             (sum, trade) =>
                               sum + Math.max(0, trade.profitOrLoss),
                             0
                           )
-                          .toFixed(2)}
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Losses</span>
                       <span className="font-medium text-red-600">
-                        $
-                        {Math.abs(
-                          completedTrades.reduce(
-                            (sum, trade) =>
-                              sum + Math.min(0, trade.profitOrLoss),
-                            0
+                        {formatCurrency(
+                          Math.abs(
+                            completedTrades.reduce(
+                              (sum, trade) =>
+                                sum + Math.min(0, trade.profitOrLoss),
+                              0
+                            )
                           )
-                        ).toFixed(2)}
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between border-t pt-3">
@@ -993,7 +1049,7 @@ export default function SessionDetailPage() {
                           netProfit >= 0 ? "text-green-600" : "text-red-600"
                         }`}
                       >
-                        ${netProfit.toFixed(2)}
+                        {formatSignedCurrency(netProfit)}
                       </span>
                     </div>
                   </div>
@@ -1051,7 +1107,7 @@ export default function SessionDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="text-center p-6 bg-blue-50 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600 mb-2">
-                    ${targetProfit.toFixed(2)}
+                    {formatCurrency(targetProfit)}
                   </div>
                   <div className="text-sm text-gray-600 mb-2">
                     Target Profit
@@ -1064,7 +1120,7 @@ export default function SessionDetailPage() {
 
                 <div className="text-center p-6 bg-green-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-600 mb-2">
-                    ${netProfit.toFixed(2)}
+                    {formatSignedCurrency(netProfit)}
                   </div>
                   <div className="text-sm text-gray-600 mb-2">
                     Actual Profit

@@ -5,57 +5,63 @@ interface StatCardProps {
   title: string;
   value: number | string;
   icon: LucideIcon;
-  color: 'blue' | 'green' | 'orange' | 'purple' | 'red';
+  color: "blue" | "green" | "orange" | "purple" | "red";
   subtitle?: string;
 }
 
-export const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, subtitle }) => {
-  const getColorClasses = () => {
-    switch (color) {
-      case 'blue':
-        return 'border-blue-500 bg-blue-50';
-      case 'green':
-        return 'border-green-500 bg-green-50';
-      case 'orange':
-        return 'border-orange-500 bg-orange-50';
-      case 'purple':
-        return 'border-purple-500 bg-purple-50';
-      case 'red':
-        return 'border-red-500 bg-red-50';
-      default:
-        return 'border-blue-500 bg-blue-50';
-    }
-  };
+const colorStyles: Record<
+  StatCardProps["color"],
+  { iconWrapper: string; accent: string }
+> = {
+  blue: {
+    iconWrapper: "bg-blue-100 text-blue-600",
+    accent: "text-blue-600",
+  },
+  green: {
+    iconWrapper: "bg-green-100 text-green-600",
+    accent: "text-green-600",
+  },
+  orange: {
+    iconWrapper: "bg-orange-100 text-orange-600",
+    accent: "text-orange-600",
+  },
+  purple: {
+    iconWrapper: "bg-purple-100 text-purple-600",
+    accent: "text-purple-600",
+  },
+  red: {
+    iconWrapper: "bg-red-100 text-red-600",
+    accent: "text-red-600",
+  },
+};
 
-  const getIconColor = () => {
-    switch (color) {
-      case 'blue':
-        return 'text-blue-600';
-      case 'green':
-        return 'text-green-600';
-      case 'orange':
-        return 'text-orange-600';
-      case 'purple':
-        return 'text-purple-600';
-      case 'red':
-        return 'text-red-600';
-      default:
-        return 'text-blue-600';
-    }
-  };
+export const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon: Icon,
+  color,
+  subtitle,
+}) => {
+  const styles = colorStyles[color];
 
   return (
-    <div className={`stat-card ${getColorClasses()}`}>
-      <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1 mr-2">
-          <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{title}</p>
-          <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{value}</p>
+    <div className="stat-card">
+      <div className="flex items-start justify-between space-x-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-wide text-gray-500">
+            {title}
+          </p>
+          <p className="mt-2 text-2xl sm:text-3xl font-semibold text-gray-900">
+            {value}
+          </p>
           {subtitle && (
-            <p className="text-xs text-gray-500 mt-1 truncate">{subtitle}</p>
+            <p className="mt-1 text-xs sm:text-sm text-gray-500">{subtitle}</p>
           )}
         </div>
-        <div className={`p-2 sm:p-3 rounded-full ${getIconColor()} flex-shrink-0`}>
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+        <div
+          className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl ${styles.iconWrapper}`}
+        >
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>
     </div>
