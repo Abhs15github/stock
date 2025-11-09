@@ -5,6 +5,7 @@ import { TradingSession, SessionContextType } from '../types';
 import { validateSessionData } from '../utils/validation';
 import { storageUtils } from '../utils/storage';
 import { useAuth } from './AuthContext';
+import { BASE_RISK_PERCENT } from '../constants/riskConfig';
 
 const SessionContext = createContext<SessionContextType | null>(null);
 
@@ -76,9 +77,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const calculateRiskPercentage = (): number => {
     // FIXED RISK MODEL
-    // Uses consistent 15% risk per trade for steady, predictable growth
-
-    return 0.15; // Fixed 15% risk per trade
+    // Uses consistent 15.83% risk per trade based on initial session capital
+    return BASE_RISK_PERCENT;
   };
 
   const createNextPendingTrade = async (session: TradingSession) => {
@@ -103,8 +103,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentBalance += trade.profitOrLoss;
       });
       
-      // Calculate stake as percentage of current balance (dynamic)
-      const calculatedRisk = currentBalance * riskPercent;
+      // Calculate stake as percentage of initial session capital for consistency
+      const calculatedRisk = session.capital * riskPercent;
       const timestamp = Date.now();
 
       const newTrade = {
