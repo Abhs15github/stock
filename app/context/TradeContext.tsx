@@ -4,49 +4,126 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trade, TradeContextType } from '../types';
 import { storageUtils } from '../utils/storage';
 import { useAuth } from './AuthContext';
-import {
-  BASE_RISK_PERCENT,
-  LOSS_INCREMENT,
-  WIN_DECREMENT,
-} from '../constants/riskConfig';
-
-const determineNextRiskPercent = (sessionCapital: number, completedTrades: Trade[]): number => {
-  if (sessionCapital <= 0) {
-    return BASE_RISK_PERCENT;
+const calculateSessionTargetProfit = (
+  capital: number,
+  totalTrades: number,
+  accuracy: number,
+  riskRewardRatio: number
+): number => {
+  if (!capital || capital <= 0 || !totalTrades || totalTrades <= 0) {
+    return 0;
   }
 
-  const basePercent = BASE_RISK_PERCENT;
-  const reducedPercent = Math.max(0, basePercent - WIN_DECREMENT);
-  const adjustmentStep = WIN_DECREMENT + LOSS_INCREMENT;
-
-  if (completedTrades.length === 0) {
-    return basePercent;
+  if (accuracy < 0 || accuracy > 100 || !riskRewardRatio || riskRewardRatio <= 0) {
+    return 0;
   }
 
-  const sortedTrades = [...completedTrades].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  const baseRisk = 0.06;
+  const fixedWinRate = 0.60;
+  const expectedWins = totalTrades * fixedWinRate;
+  const expectedLosses = totalTrades * (1 - fixedWinRate);
+
+  const winMultiplier = 1 + riskRewardRatio * baseRisk;
+  const lossMultiplier = 1 - baseRisk;
+
+  const targetMultiplier =
+    Math.pow(winMultiplier, expectedWins) * Math.pow(lossMultiplier, expectedLosses);
+
+  const targetBalance = capital * targetMultiplier;
+  return targetBalance - capital;
+};
+
+const buildRequiredBalanceTable = (
+  targetBalance: number,
+  riskRewardRatio: number,
+  totalTrades: number,
+  requiredWins: number
+) => {
+  const table: number[][] = Array.from({ length: requiredWins + 1 }, () =>
+    Array(totalTrades + 1).fill(Number.POSITIVE_INFINITY)
   );
 
-  const lastTrade = sortedTrades[sortedTrades.length - 1];
-
-  if (lastTrade.status === 'won') {
-    return reducedPercent;
+  for (let r = 0; r <= totalTrades; r += 1) {
+    table[0][r] = targetBalance;
   }
 
-  let consecutiveLosses = 0;
-  for (let i = sortedTrades.length - 1; i >= 0; i -= 1) {
-    if (sortedTrades[i].status === 'lost') {
-      consecutiveLosses += 1;
-    } else {
-      break;
+  for (let w = 1; w <= requiredWins; w += 1) {
+    for (let r = 0; r <= totalTrades; r += 1) {
+      if (r === 0 || r < w) {
+        if (w === r) {
+          const prevWinRequirement = table[w - 1][r - 1];
+          table[w][r] = Number.isFinite(prevWinRequirement)
+            ? prevWinRequirement / (riskRewardRatio + 1)
+            : Number.POSITIVE_INFINITY;
+        } else {
+          table[w][r] = Number.POSITIVE_INFINITY;
+        }
+        continue;
+      }
+
+      const lossRequirement = table[w][r - 1];
+      const winRequirement = table[w - 1][r - 1];
+
+      if (!Number.isFinite(lossRequirement)) {
+        table[w][r] = Number.isFinite(winRequirement)
+          ? winRequirement / (riskRewardRatio + 1)
+          : Number.POSITIVE_INFINITY;
+        continue;
+      }
+
+      const candidate =
+        (winRequirement + riskRewardRatio * lossRequirement) /
+        (riskRewardRatio + 1);
+
+      table[w][r] = Math.max(lossRequirement, candidate);
     }
   }
 
-  if (consecutiveLosses === 0) {
-    return reducedPercent;
+  return table;
+};
+
+const calculateNextStake = (
+  currentBalance: number,
+  remainingTrades: number,
+  winsNeeded: number,
+  riskRewardRatio: number,
+  requiredBalanceTable: number[][]
+) => {
+  if (remainingTrades <= 0 || winsNeeded <= 0 || currentBalance <= 0) {
+    return 0;
   }
 
-  return Math.min(1, reducedPercent + adjustmentStep * consecutiveLosses);
+  const lossRequirement =
+    requiredBalanceTable[winsNeeded]?.[remainingTrades - 1] ??
+    Number.POSITIVE_INFINITY;
+  const winRequirement =
+    requiredBalanceTable[Math.max(0, winsNeeded - 1)]?.[remainingTrades - 1] ??
+    Number.POSITIVE_INFINITY;
+
+  let stake: number;
+
+  if (!Number.isFinite(lossRequirement)) {
+    stake = currentBalance;
+  } else {
+    stake = currentBalance - lossRequirement;
+  }
+
+  if (Number.isFinite(winRequirement)) {
+    const minStakeForWin = Math.max(
+      0,
+      (winRequirement - currentBalance) / riskRewardRatio
+    );
+    stake = Math.max(stake, minStakeForWin);
+  }
+
+  stake = Math.min(stake, currentBalance);
+  stake = Number(stake.toFixed(2));
+
+  if (stake <= 0 || !Number.isFinite(stake)) {
+    return 0;
+  }
+
+  return stake;
 };
 
 const TradeContext = createContext<TradeContextType | null>(null);
@@ -373,13 +450,16 @@ const createNextPendingTrade = async (
         return { success: false, message: 'Target trades limit reached' };
       }
 
-    const wins = completedTrades.filter((trade) => trade.status === 'won').length;
-    const requiredWins = Math.ceil(targetTrades * (targetAccuracy / 100));
+      const wins = completedTrades.filter((trade) => trade.status === 'won').length;
+      const requiredWins = Math.max(
+        0,
+        Math.ceil(targetTrades * (targetAccuracy / 100))
+      );
 
-    if (requiredWins > 0 && wins >= requiredWins) {
-      console.log('Target ITM reached:', wins, '/', requiredWins);
-      return { success: false, message: 'Target ITM reached' };
-    }
+      if (requiredWins > 0 && wins >= requiredWins) {
+        console.log('Target ITM reached:', wins, '/', requiredWins);
+        return { success: false, message: 'Target ITM reached' };
+      }
       
       // Calculate current balance based on completed trades
       let currentBalance = sessionCapital;
@@ -388,9 +468,50 @@ const createNextPendingTrade = async (
         currentBalance += trade.profitOrLoss;
       });
       
-      // Determine next stake size based on progression rules
-      const nextRiskPercent = determineNextRiskPercent(sessionCapital, completedTrades);
-      const calculatedRisk = sessionCapital * nextRiskPercent;
+      if (currentBalance <= 0) {
+        console.log('No available balance to allocate for next trade.');
+        return { success: false, message: 'Insufficient balance for next trade' };
+      }
+
+      const targetProfit = calculateSessionTargetProfit(
+        sessionCapital,
+        targetTrades,
+        targetAccuracy,
+        riskRewardRatio
+      );
+      const targetBalance = sessionCapital + targetProfit;
+
+      const remainingTrades = targetTrades - completedTrades.length;
+      const winsNeeded = Math.max(0, requiredWins - wins);
+
+      if (winsNeeded === 0) {
+        console.log('Required wins already achieved.');
+        return { success: false, message: 'Target already achieved' };
+      }
+
+      if (remainingTrades <= 0) {
+        return { success: false, message: 'No trades remaining' };
+      }
+
+      const requiredBalanceTable = buildRequiredBalanceTable(
+        targetBalance,
+        riskRewardRatio,
+        targetTrades,
+        requiredWins
+      );
+
+      const nextStake = calculateNextStake(
+        currentBalance,
+        remainingTrades,
+        winsNeeded,
+        riskRewardRatio,
+        requiredBalanceTable
+      );
+
+      if (nextStake <= 0) {
+        console.log('Calculated stake is zero; skipping trade creation.');
+        return { success: false, message: 'Stake too small to create trade' };
+      }
       const timestamp = Date.now();
 
       const newTrade = {
@@ -400,7 +521,7 @@ const createNextPendingTrade = async (
         pairName: 'Trade Entry',
         entryPrice: 0,
         exitPrice: undefined,
-        investment: calculatedRisk,
+        investment: nextStake,
         date: new Date().toISOString(),
         type: 'buy' as const,
         status: 'pending' as const,
@@ -416,7 +537,7 @@ const createNextPendingTrade = async (
       // Update local state
       setTrades(prev => [...prev, newTrade]);
       
-      console.log('Created next pending trade with stake:', calculatedRisk);
+      console.log('Created next pending trade with stake:', nextStake);
       console.log('Current balance:', currentBalance);
       console.log('Completed trades:', completedTrades.length, '/', targetTrades);
       
