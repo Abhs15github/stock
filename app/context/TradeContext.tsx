@@ -333,7 +333,14 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const createNextPendingTrade = async (sessionId: string, sessionCapital: number, _riskPercent: number, riskRewardRatio: number, targetTrades: number) => {
+const createNextPendingTrade = async (
+  sessionId: string,
+  sessionCapital: number,
+  _riskPercent: number,
+  riskRewardRatio: number,
+  targetTrades: number,
+  targetAccuracy: number
+) => {
     try {
       const allTrades = storageUtils.getTrades();
       
@@ -342,10 +349,18 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Check if target trades limit has been reached
       const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
-      if (completedTrades.length >= targetTrades) {
+    if (completedTrades.length >= targetTrades) {
         console.log('Target trades limit reached:', completedTrades.length, '/', targetTrades);
         return { success: false, message: 'Target trades limit reached' };
       }
+
+    const wins = completedTrades.filter((trade) => trade.status === 'won').length;
+    const requiredWins = Math.ceil(targetTrades * (targetAccuracy / 100));
+
+    if (requiredWins > 0 && wins >= requiredWins) {
+      console.log('Target ITM reached:', wins, '/', requiredWins);
+      return { success: false, message: 'Target ITM reached' };
+    }
       
       // Calculate current balance based on completed trades
       let currentBalance = sessionCapital;

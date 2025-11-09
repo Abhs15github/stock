@@ -165,17 +165,26 @@ export default function SessionDetailPage() {
 
   const checkIfTargetReached = useCallback(() => {
     if (!session) return false;
-    
-    const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
-    
-    // Only check target if there are completed trades
+
+    const completedTrades = sessionTrades.filter((t) => t.status !== "pending");
+
     if (completedTrades.length === 0) return false;
-    
-    const currentBalance = session.capital + completedTrades.reduce((sum, t) => sum + t.profitOrLoss, 0);
+
+    const wins = completedTrades.filter((t) => t.status === "won").length;
+    const requiredWins = Math.ceil(
+      session.totalTrades * (session.accuracy / 100)
+    );
+
+    const currentBalance =
+      session.capital +
+      completedTrades.reduce((sum, t) => sum + t.profitOrLoss, 0);
     const targetBalance = session.capital + calculateTargetProfit(session);
-    
-    // Target reached if current balance >= target balance AND we have at least 1 completed trade
-    return currentBalance >= targetBalance && completedTrades.length > 0;
+
+    const hitTargetProfit =
+      currentBalance >= targetBalance && completedTrades.length > 0;
+    const hitTargetItm = requiredWins > 0 && wins >= requiredWins;
+
+    return hitTargetProfit || hitTargetItm;
   }, [session, sessionTrades, calculateTargetProfit]);
 
   // Calculate risk percentage for dynamic stake calculation
@@ -183,6 +192,11 @@ export default function SessionDetailPage() {
     // Baseline stake defined in risk configuration
     return BASE_RISK_PERCENT;
   }, []);
+
+  const targetProfit = useMemo(
+    () => (session ? calculateTargetProfit(session) : 0),
+    [session, calculateTargetProfit]
+  );
 
   const handleRecordResult = useCallback(
     async (tradeId: string, result: "won" | "lost") => {
@@ -250,13 +264,30 @@ export default function SessionDetailPage() {
             currentBalanceAfterUpdate >= targetBalance - 0.01;
           const hasCompletedAllTrades =
             completedTradesAfterUpdate.length >= session.totalTrades;
+          const winsAfterUpdate = completedTradesAfterUpdate.filter(
+            (trade) => trade.status === "won"
+          ).length;
+          const requiredWins = Math.ceil(
+            session.totalTrades * (session.accuracy / 100)
+          );
+          const hasReachedTargetItm =
+            requiredWins > 0 && winsAfterUpdate >= requiredWins;
 
-          if (hasReachedTargetAfterUpdate || hasCompletedAllTrades) {
+          if (
+            hasReachedTargetAfterUpdate ||
+            hasCompletedAllTrades ||
+            hasReachedTargetItm
+          ) {
             await alignSessionProfit(session.id, targetProfit);
             await reloadTrades();
 
             if (hasReachedTargetAfterUpdate) {
               showToast("🎉 Target reached! Session goal completed.", "success");
+            } else if (hasReachedTargetItm) {
+              showToast(
+                "🎯 Target ITM reached! Session goal completed.",
+                "success"
+              );
             }
           } else {
             // Only create next trade if target not reached and trades remain
@@ -266,7 +297,8 @@ export default function SessionDetailPage() {
               session.capital,
               riskPercent,
               session.riskRewardRatio,
-              session.totalTrades
+              session.totalTrades,
+              session.accuracy
             );
 
             if (!nextTradeResult.success) {
@@ -296,6 +328,8 @@ export default function SessionDetailPage() {
       showToast,
       calculateRiskPercentage,
       checkIfTargetReached,
+      targetProfit,
+      user,
     ]
   );
 
@@ -361,10 +395,6 @@ export default function SessionDetailPage() {
   const netProfit = useMemo(() => calculateNetProfit(), [calculateNetProfit]);
   const winRate = useMemo(() => calculateWinRate(), [calculateWinRate]);
   const progress = useMemo(() => calculateProgress(), [calculateProgress]);
-  const targetProfit = useMemo(
-    () => (session ? calculateTargetProfit(session) : 0),
-    [session, calculateTargetProfit]
-  );
   const minTotalBalance = useMemo(
     () => calculateMinTotalBalance(),
     [calculateMinTotalBalance]
@@ -403,7 +433,7 @@ export default function SessionDetailPage() {
         .filter((t) => t.status !== "pending")
         .sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         ),
     [sessionTrades]
   );
