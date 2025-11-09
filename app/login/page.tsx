@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { TrendingUp, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useToast } from '../components/Toast';
-import Link from 'next/link';
 
 export default function LoginPage() {
   const { login, user, isLoading } = useAuth();
@@ -14,7 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +32,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.username, formData.password);
 
       if (result.success) {
         showToast('Login successful!', 'success');
@@ -87,22 +86,22 @@ export default function LoginPage() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
+              <label htmlFor="username" className="sr-only">
+                Username
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
                   required
                   className="input-field pl-10"
-                  placeholder="Email address"
-                  value={formData.email}
+                  placeholder="Username"
+                  value={formData.username}
                   onChange={handleChange}
                 />
               </div>
@@ -155,16 +154,8 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link
-                href="/register"
-                className="font-medium text-primary-600 hover:text-primary-500"
-              >
-                Sign up
-              </Link>
-            </p>
+          <div className="text-center text-sm text-gray-500">
+            Access is limited to authorized users.
           </div>
         </form>
       </div>
