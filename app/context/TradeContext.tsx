@@ -11,8 +11,16 @@ import {
 } from '../constants/riskConfig';
 
 const determineNextRiskPercent = (sessionCapital: number, completedTrades: Trade[]): number => {
-  if (completedTrades.length === 0) {
+  if (sessionCapital <= 0) {
     return BASE_RISK_PERCENT;
+  }
+
+  const basePercent = BASE_RISK_PERCENT;
+  const reducedPercent = Math.max(0, basePercent - WIN_DECREMENT);
+  const adjustmentStep = WIN_DECREMENT + LOSS_INCREMENT;
+
+  if (completedTrades.length === 0) {
+    return basePercent;
   }
 
   const sortedTrades = [...completedTrades].sort(
@@ -20,24 +28,25 @@ const determineNextRiskPercent = (sessionCapital: number, completedTrades: Trade
   );
 
   const lastTrade = sortedTrades[sortedTrades.length - 1];
-  const lastRiskPercent = sessionCapital > 0 ? lastTrade.investment / sessionCapital : BASE_RISK_PERCENT;
-
-  if (
-    sortedTrades.length === 2 &&
-    sortedTrades.every((trade) => trade.status === 'lost')
-  ) {
-    return lastRiskPercent;
-  }
 
   if (lastTrade.status === 'won') {
-    return Math.max(0, lastRiskPercent - WIN_DECREMENT);
+    return reducedPercent;
   }
 
-  if (lastTrade.status === 'lost') {
-    return lastRiskPercent + LOSS_INCREMENT;
+  let consecutiveLosses = 0;
+  for (let i = sortedTrades.length - 1; i >= 0; i -= 1) {
+    if (sortedTrades[i].status === 'lost') {
+      consecutiveLosses += 1;
+    } else {
+      break;
+    }
   }
 
-  return lastRiskPercent;
+  if (consecutiveLosses === 0) {
+    return reducedPercent;
+  }
+
+  return Math.min(1, reducedPercent + adjustmentStep * consecutiveLosses);
 };
 
 const TradeContext = createContext<TradeContextType | null>(null);
@@ -295,9 +304,19 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
       );
 
-      const tradeToAdjust =
-        [...sortedCompleted].reverse().find((trade) => trade.status === 'won') ??
-        sortedCompleted[sortedCompleted.length - 1];
+      const selectTradeForAdjustment = () => {
+        if (profitDelta > 0) {
+          return [...sortedCompleted].reverse().find((trade) => trade.status === 'won');
+        }
+
+        if (profitDelta < 0) {
+          return [...sortedCompleted].reverse().find((trade) => trade.status === 'lost');
+        }
+
+        return sortedCompleted[sortedCompleted.length - 1];
+      };
+
+      const tradeToAdjust = selectTradeForAdjustment() ?? sortedCompleted[sortedCompleted.length - 1];
 
       if (!tradeToAdjust) {
         return;

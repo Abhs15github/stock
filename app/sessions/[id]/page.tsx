@@ -273,11 +273,7 @@ export default function SessionDetailPage() {
           const hasReachedTargetItm =
             requiredWins > 0 && winsAfterUpdate >= requiredWins;
 
-          if (
-            hasReachedTargetAfterUpdate ||
-            hasCompletedAllTrades ||
-            hasReachedTargetItm
-          ) {
+          if (hasReachedTargetAfterUpdate || hasReachedTargetItm) {
             await alignSessionProfit(session.id, targetProfit);
             await reloadTrades();
 
@@ -289,6 +285,13 @@ export default function SessionDetailPage() {
                 "success"
               );
             }
+          } else if (hasCompletedAllTrades) {
+            await alignSessionProfit(session.id, -session.capital);
+            await reloadTrades();
+            showToast(
+              "Session completed. Account balance depleted.",
+              "info"
+            );
           } else {
             // Only create next trade if target not reached and trades remain
             const riskPercent = calculateRiskPercentage();
