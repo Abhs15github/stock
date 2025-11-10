@@ -274,7 +274,11 @@ export default function SessionDetailPage() {
             requiredWins > 0 && winsAfterUpdate >= requiredWins;
 
           if (hasReachedTargetAfterUpdate || hasReachedTargetItm) {
-            await alignSessionProfit(session.id, targetProfit);
+            const alignmentTarget = hasReachedTargetAfterUpdate
+              ? targetProfit
+              : updatedNetProfit;
+
+            await alignSessionProfit(session.id, alignmentTarget);
             await reloadTrades();
 
             if (hasReachedTargetAfterUpdate) {
