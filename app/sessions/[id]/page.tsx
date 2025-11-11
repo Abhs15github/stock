@@ -474,7 +474,7 @@ export default function SessionDetailPage() {
           transition={{ duration: 0.5 }}
           className="mb-6"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-0">
               <button
                 onClick={() => router.back()}
@@ -503,10 +503,10 @@ export default function SessionDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <button
                 onClick={() => setShowToolsDropdown(!showToolsDropdown)}
-                className="inline-flex items-center space-x-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:border-gray-300 hover:text-gray-900"
+                className="inline-flex w-full sm:w-auto items-center justify-center space-x-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:border-gray-300 hover:text-gray-900"
               >
                 <Calculator className="w-4 h-4" />
                 <span>Tools</span>
@@ -677,13 +677,13 @@ export default function SessionDetailPage() {
                 </h3>
 
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className="text-gray-600">Min. Total Balance</span>
                     <span className="font-semibold">
                       {formatCurrency(minTotalBalance)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className="text-gray-600">Min. Total Return</span>
                     <span className="font-semibold">
                       {formatCurrency(targetProfit)}
@@ -712,8 +712,8 @@ export default function SessionDetailPage() {
                   Strategy Configuration
                 </h3>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                       <span className="text-sm text-gray-600">
@@ -725,7 +725,7 @@ export default function SessionDetailPage() {
                     </p>
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                       <span className="text-sm text-gray-600">
@@ -737,7 +737,7 @@ export default function SessionDetailPage() {
                     </p>
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                       <span className="text-sm text-gray-600">
@@ -747,7 +747,7 @@ export default function SessionDetailPage() {
                     <p className="text-2xl font-bold">{session.totalTrades}</p>
                   </div>
 
-                  <div>
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                       <span className="text-sm text-gray-600">
@@ -766,7 +766,7 @@ export default function SessionDetailPage() {
 
         {/* Trade List Tab Content */}
         {activeTab === "trades" && (
-          <div className="space-y-6">
+            <div className="space-y-6">
             {/* Pending Trades Section - Only show if there are actual pending trades */}
             {pendingTrades.length > 0 && (
               <motion.div
@@ -775,9 +775,9 @@ export default function SessionDetailPage() {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="bg-yellow-50 border border-yellow-200 rounded-lg p-6"
               >
-                <div className="flex items-center space-x-2 mb-4">
-                  <span className="text-2xl">⚠️</span>
-                  <h3 className="text-lg font-semibold text-yellow-900">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
+                  <div className="text-2xl leading-none">⚠️</div>
+                  <h3 className="text-lg font-semibold text-yellow-900 sm:flex-1">
                     Record Trade Results ({allPendingTrades.length} pending)
                   </h3>
                 </div>
@@ -790,14 +790,14 @@ export default function SessionDetailPage() {
                     key={trade.id}
                     className="bg-white rounded-lg p-4 mb-3 last:mb-0"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="w-full sm:w-auto">
                         <p className="text-sm text-gray-600">Risk</p>
                         <p className="text-xl font-bold">
                           {formatCurrency(trade.investment)}
                         </p>
                       </div>
-                      <div>
+                      <div className="w-full sm:w-auto">
                         <p className="text-sm text-gray-600">
                           Potential Return
                         </p>
@@ -807,13 +807,13 @@ export default function SessionDetailPage() {
                           )}
                         </p>
                       </div>
-                      <div className="flex items-center space-x-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
                         <button
                           onClick={() => handleRecordResult(trade.id, "won")}
                           disabled={
                             recordingTrade === trade.id || isTargetReached
                           }
-                          className="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <CheckCircle className="w-4 h-4" />
                           <span>WON</span>
@@ -823,7 +823,7 @@ export default function SessionDetailPage() {
                           disabled={
                             recordingTrade === trade.id || isTargetReached
                           }
-                          className="flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <XCircle className="w-4 h-4" />
                           <span>LOST</span>
@@ -842,11 +842,11 @@ export default function SessionDetailPage() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="card"
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h3 className="text-xl font-bold text-gray-900">
                   Complete Trading History
                 </h3>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-3">
                   {allPendingTrades.length > 0 && (
                     <button
                       onClick={() =>
@@ -1043,7 +1043,7 @@ export default function SessionDetailPage() {
                     Profit Analysis
                   </h4>
                   <div className="space-y-3">
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                       <span className="text-gray-600">Total Investment</span>
                       <span className="font-medium">
                         {formatCurrency(
@@ -1054,7 +1054,7 @@ export default function SessionDetailPage() {
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                       <span className="text-gray-600">Total Returns</span>
                       <span className="font-medium text-green-600">
                         {formatCurrency(
@@ -1066,7 +1066,7 @@ export default function SessionDetailPage() {
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                       <span className="text-gray-600">Total Losses</span>
                       <span className="font-medium text-red-600">
                         {formatCurrency(
@@ -1080,7 +1080,7 @@ export default function SessionDetailPage() {
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between border-t pt-3">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 border-t pt-3">
                       <span className="text-gray-600 font-semibold">
                         Net P&L
                       </span>
@@ -1100,15 +1100,15 @@ export default function SessionDetailPage() {
                     Session Progress
                   </h4>
                   <div className="space-y-3">
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                       <span className="text-gray-600">Target Trades</span>
                       <span className="font-medium">{session.totalTrades}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                       <span className="text-gray-600">Completed</span>
                       <span className="font-medium">{progress.completed}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                       <span className="text-gray-600">Remaining</span>
                       <span className="font-medium">
                         {Math.max(0, session.totalTrades - progress.completed)}

@@ -174,14 +174,14 @@ export default function SessionsPage() {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6">
-            <div className="mb-4 sm:mb-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-4">
+            <div className="mb-2 sm:mb-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">BBT Trade Sessions</h1>
               <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track your trading sessions</p>
             </div>
             <Link
               href="/sessions/new"
-              className="btn-primary flex items-center space-x-2 text-sm sm:text-base"
+              className="btn-primary flex items-center space-x-2 text-sm sm:text-base self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" />
               <span>New Session</span>
@@ -266,11 +266,11 @@ export default function SessionsPage() {
                     </button>
 
                     {/* Session Header */}
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <div className="flex items-start sm:items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <BarChart3 className="w-5 h-5 text-blue-600" />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-1">
                         <h3 className="font-semibold text-gray-900 truncate">{session.name}</h3>
                         <span
                           className={`inline-block px-2 py-1 text-xs rounded-full ${
@@ -285,42 +285,46 @@ export default function SessionsPage() {
                     </div>
 
                     {/* Session Info */}
-                    <div className="space-y-3 mb-4">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Created {new Date(session.createdAt).toLocaleDateString()}</span>
+                    <div className="space-y-4 mb-4">
+                      <div className="text-sm text-gray-600">
+                        Created {new Date(session.createdAt).toLocaleDateString()}
                       </div>
 
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-xs text-gray-600">Win Rate</p>
-                          <p className="text-sm font-medium">{progress.itm}%</p>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center justify-between sm:block">
+                          <div>
+                            <p className="text-xs text-gray-600">Win Rate</p>
+                            <p className="text-sm font-medium">{progress.itm}%</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-gray-600">Progress</p>
-                          <p className="text-sm font-medium">{progress.trades}</p>
+                        <div className="flex items-center justify-between sm:block">
+                          <div className="text-right sm:text-left">
+                            <p className="text-xs text-gray-600">Progress</p>
+                            <p className="text-sm font-medium">{progress.trades}</p>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex justify-between items-center text-sm">
-                        <div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm">
+                        <div className="flex items-center justify-between sm:block">
                           <span className="text-gray-600">W/L: {metrics.wins}/{metrics.losses}</span>
                         </div>
-                        <div>
-                          <span className="text-gray-600">RR: 1:{metrics.riskRewardRatio}</span>
+                        <div className="flex items-center justify-between sm:block">
+                          <span className="text-gray-600 sm:text-right">RR: 1:{metrics.riskRewardRatio}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Session Metrics */}
-                    <div className="space-y-2 pt-4 border-t border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <div>
+                    <div className="space-y-3 pt-4 border-t border-gray-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1">
                           <p className="text-xs text-gray-600">Current Balance</p>
                           <p className="text-lg font-bold text-gray-900">
                             ${currentBalance.toFixed(2)}
                           </p>
                         </div>
-                        <div className="text-right">
+                        <div className="flex-1 text-left sm:text-right">
                           <p className="text-xs text-gray-600">Net P/L</p>
                           <p className={`text-lg font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {netProfit >= 0 ? '+' : ''}${netProfit.toFixed(2)}
@@ -328,7 +332,7 @@ export default function SessionsPage() {
                         </div>
                       </div>
                       
-                      <div className="pt-2 border-t border-gray-100">
+                      <div className="pt-3 border-t border-gray-100">
                         <p className="text-xs text-gray-600">Projected Profit</p>
                         <p className="text-sm font-semibold text-blue-600">
                           ${targetProfit.toFixed(2)}
