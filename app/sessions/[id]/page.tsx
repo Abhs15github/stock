@@ -158,9 +158,12 @@ export default function SessionDetailPage() {
     const targetMultiplier = Math.pow(winMultiplier, expectedWins) * Math.pow(lossMultiplier, expectedLosses);
 
     const targetBalance = capital * targetMultiplier;
-    const totalExpectedProfit = targetBalance - capital;
+    const rawProfit = targetBalance - capital;
+    const step = Math.max(Number((riskRewardRatio * 0.01).toFixed(2)), 0.01);
+    const normalizedProfit =
+      step > 0 ? Math.round(rawProfit / step) * step : rawProfit;
 
-    return totalExpectedProfit;
+    return Number(normalizedProfit.toFixed(2));
   }, []);
 
   const checkIfTargetReached = useCallback(() => {

@@ -29,8 +29,12 @@ const calculateSessionTargetProfit = (
   const targetMultiplier =
     Math.pow(winMultiplier, expectedWins) * Math.pow(lossMultiplier, expectedLosses);
 
-  const targetBalance = capital * targetMultiplier;
-  return targetBalance - capital;
+  const rawProfit = targetMultiplier * capital - capital;
+  const step = Math.max(Number((riskRewardRatio * 0.01).toFixed(2)), 0.01);
+  const normalizedProfit =
+    step > 0 ? Math.round(rawProfit / step) * step : rawProfit;
+
+  return Number(normalizedProfit.toFixed(2));
 };
 
 const buildRequiredBalanceTable = (
@@ -372,12 +376,8 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
 
       const profitDelta = Number((targetProfit - actualProfit).toFixed(2));
-      const MAX_ALIGNMENT_ADJUSTMENT = 0.5;
 
-      if (
-        Math.abs(profitDelta) < 0.01 ||
-        Math.abs(profitDelta) > MAX_ALIGNMENT_ADJUSTMENT
-      ) {
+      if (Math.abs(profitDelta) < 0.01) {
         return;
       }
 
@@ -411,14 +411,72 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
 
-      const adjustedProfit = Number((tradeToAdjust.profitOrLoss + profitDelta).toFixed(2));
+      const originalProfit = tradeToAdjust.profitOrLoss;
+      const originalInvestment = tradeToAdjust.investment;
+      const isWin = tradeToAdjust.status === 'won';
+      const isLoss = tradeToAdjust.status === 'lost';
+
+      let adjustedProfit = Number((originalProfit + profitDelta).toFixed(2));
+      let adjustedInvestment = originalInvestment;
+
+      if (isWin && adjustedProfit > 0) {
+        const riskRewardRatio =
+          originalInvestment > 0
+            ? Number((originalProfit / originalInvestment).toFixed(6))
+            : 0;
+
+        if (riskRewardRatio > 0) {
+          adjustedInvestment = Number(
+            Math.max(0, adjustedProfit / riskRewardRatio).toFixed(2)
+          );
+          adjustedProfit = Number(
+            (adjustedInvestment * riskRewardRatio).toFixed(2)
+          );
+        }
+      } else if (isLoss && adjustedProfit < 0) {
+        adjustedInvestment = Number(Math.abs(adjustedProfit).toFixed(2));
+        adjustedProfit = -adjustedInvestment;
+      }
+
+      const projectedActualProfit =
+        actualProfit - originalProfit + adjustedProfit;
+      const remainingDelta = Number(
+        (targetProfit - projectedActualProfit).toFixed(2)
+      );
+
+      if (Math.abs(remainingDelta) >= 0.01) {
+        adjustedProfit = Number(
+          (adjustedProfit + remainingDelta).toFixed(2)
+        );
+
+        if (isWin && adjustedProfit > 0) {
+          const riskRewardRatio =
+            adjustedInvestment > 0
+              ? Number((originalProfit / originalInvestment).toFixed(6))
+              : 0;
+
+          if (riskRewardRatio > 0) {
+            adjustedInvestment = Number(
+              Math.max(0, adjustedProfit / riskRewardRatio).toFixed(2)
+            );
+            adjustedProfit = Number(
+              (adjustedInvestment * riskRewardRatio).toFixed(2)
+            );
+          }
+        } else if (isLoss && adjustedProfit < 0) {
+          adjustedInvestment = Number(Math.abs(adjustedProfit).toFixed(2));
+          adjustedProfit = -adjustedInvestment;
+        }
+      }
+
       const adjustedPercentage =
-        tradeToAdjust.investment > 0
-          ? Number(((adjustedProfit / tradeToAdjust.investment) * 100).toFixed(2))
+        adjustedInvestment > 0
+          ? Number(((adjustedProfit / adjustedInvestment) * 100).toFixed(2))
           : tradeToAdjust.profitOrLossPercentage;
 
       allTrades[tradeIndex] = {
         ...allTrades[tradeIndex],
+        investment: adjustedInvestment,
         profitOrLoss: adjustedProfit,
         profitOrLossPercentage: adjustedPercentage,
         updatedAt: new Date().toISOString(),
