@@ -372,8 +372,12 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
 
       const profitDelta = Number((targetProfit - actualProfit).toFixed(2));
+      const MAX_ALIGNMENT_ADJUSTMENT = 0.5;
 
-      if (Math.abs(profitDelta) < 0.01) {
+      if (
+        Math.abs(profitDelta) < 0.01 ||
+        Math.abs(profitDelta) > MAX_ALIGNMENT_ADJUSTMENT
+      ) {
         return;
       }
 
