@@ -13,8 +13,11 @@ export function unauthorizedResponse() {
 
 export function handleError(error: unknown, fallbackMessage: string) {
   console.error(fallbackMessage, error);
+  const detailedMessage =
+    error instanceof Error ? `${fallbackMessage}: ${error.message}` : fallbackMessage;
+
   return NextResponse.json(
-    { success: false, message: fallbackMessage },
+    { success: false, message: detailedMessage },
     { status: 500 }
   );
 }
