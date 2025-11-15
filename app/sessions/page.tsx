@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSession } from '../context/SessionContext';
+import { useTrade } from '../context/TradeContext';
 import { useRouter } from 'next/navigation';
 import { Header } from '../components/Header';
 import { StatCard } from '../components/StatCard';
@@ -25,6 +26,7 @@ import Link from 'next/link';
 export default function SessionsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { sessions, deleteSession, getSessionStats } = useSession();
+  const { getSessionTrades } = useTrade();
   const { showToast } = useToast();
   const router = useRouter();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -65,28 +67,24 @@ export default function SessionsPage() {
 
   // CORRECTED CALCULATION LOGIC
   const calculateSessionMetrics = (session: any) => {
-    // Get trades array (assuming it exists in session object)
-    const trades = session.trades || [];
-    
-    // Filter completed trades (those with W or L result)
-    const completedTrades = trades.filter((t: any) => t.result === 'W' || t.result === 'L');
-    
+    // Get trades for this session from the TradeContext
+    const trades = getSessionTrades(session.id);
+
+    // Filter completed trades (those with won or lost status)
+    const completedTrades = trades.filter((t: any) => t.status === 'won' || t.status === 'lost');
+
     // Calculate wins and losses
-    const wins = completedTrades.filter((t: any) => t.result === 'W').length;
-    const losses = completedTrades.filter((t: any) => t.result === 'L').length;
+    const wins = completedTrades.filter((t: any) => t.status === 'won').length;
+    const losses = completedTrades.filter((t: any) => t.status === 'lost').length;
     
     // Win Rate Calculation
     const winRate = completedTrades.length > 0 
       ? (wins / completedTrades.length) * 100 
       : 0;
     
-    // Current Balance (from last trade or initial capital)
-    const currentBalance = trades.length > 0 && trades[trades.length - 1].balance
-      ? trades[trades.length - 1].balance 
-      : session.capital;
-    
-    // Net Profit
-    const netProfit = currentBalance - session.capital;
+    // Net Profit and Current Balance
+    const netProfit = completedTrades.reduce((sum: number, trade: any) => sum + trade.profitOrLoss, 0);
+    const currentBalance = session.capital + netProfit;
     
     // Progress tracking
     const targetTrades = session.totalTrades || 10;
@@ -166,30 +164,30 @@ export default function SessionsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-4 px-3 sm:py-6 sm:px-4 lg:px-8">
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-4">
-            <div className="mb-2 sm:mb-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">BBT Trade Sessions</h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track your trading sessions</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
+            <div className="mb-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">BBTfinance Sessions</h1>
+              <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">Manage and track your trading sessions</p>
             </div>
             <Link
               href="/sessions/new"
-              className="btn-primary flex items-center space-x-2 text-sm sm:text-base self-start sm:self-auto"
+              className="btn-primary flex items-center justify-center space-x-2 text-sm sm:text-base self-stretch sm:self-auto py-2.5 sm:py-2"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>New Session</span>
             </Link>
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
             <StatCard
               title="Total Sessions"
               value={stats.total}
@@ -223,17 +221,17 @@ export default function SessionsPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Sessions</h2>
 
           {sessions.length === 0 ? (
-            <div className="card text-center py-12">
-              <Layers className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No sessions yet</h3>
-              <p className="text-gray-600 mb-6">Create your first trading session to get started</p>
-              <Link href="/sessions/new" className="btn-primary inline-flex items-center space-x-2">
+            <div className="card text-center py-8 sm:py-12 px-4">
+              <Layers className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No sessions yet</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">Create your first trading session to get started</p>
+              <Link href="/sessions/new" className="btn-primary inline-flex items-center justify-center space-x-2 text-sm sm:text-base px-4 py-2">
                 <Plus className="w-4 h-4" />
                 <span>Create Session</span>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
               {sessions
                 .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                 .map((session, index) => {
@@ -250,95 +248,126 @@ export default function SessionsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="card hover:shadow-lg transition-shadow cursor-pointer relative"
+                    className="bg-white rounded-lg sm:rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 cursor-pointer relative overflow-hidden group active:scale-[0.98]"
                     onClick={() => router.push(`/sessions/${session.id}`)}
                   >
-                    {/* Delete Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSession(session.id, session.name);
-                      }}
-                      disabled={isDeleting === session.id}
-                      className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors z-10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* Status Indicator Bar */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 ${
+                      session.status === 'active' ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gray-300'
+                    }`}></div>
 
-                    {/* Session Header */}
-                    <div className="flex items-start sm:items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <BarChart3 className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <h3 className="font-semibold text-gray-900 truncate">{session.name}</h3>
-                        <span
-                          className={`inline-block px-2 py-1 text-xs rounded-full ${
+                    <div className="p-4 sm:p-5 lg:p-6">
+                      {/* Header Section */}
+                      <div className="flex items-start justify-between mb-3 sm:mb-4">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
                             session.status === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
+                              ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                              : 'bg-gray-400'
+                          } shadow-lg`}>
+                            <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1 truncate">{session.name}</h3>
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                session.status === 'active'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {session.status === 'active' ? 'Active' : 'Completed'}
+                              </span>
+                              <span className="text-[10px] sm:text-xs text-gray-500 truncate">
+                                {new Date(session.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSession(session.id, session.name);
+                          }}
+                          disabled={isDeleting === session.id}
+                          className="p-1.5 sm:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                         >
-                          {session.status === 'active' ? 'Active' : 'Completed'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Session Info */}
-                    <div className="space-y-4 mb-4">
-                      <div className="text-sm text-gray-600">
-                        Created {new Date(session.createdAt).toLocaleDateString()}
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
 
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center justify-between sm:block">
+                      {/* Progress Section - PROMINENT */}
+                      <div className="mb-4 sm:mb-5 bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg p-3 sm:p-4 border border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs sm:text-sm font-semibold text-gray-700">Trade Progress</span>
+                          <span className="text-base sm:text-lg font-bold text-blue-600">{metrics.completedTrades}/{metrics.progress.target}</span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="relative w-full bg-gray-200 rounded-full h-2.5 sm:h-3 overflow-hidden shadow-inner mb-2">
+                          <div
+                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500 ease-out shadow-sm"
+                            style={{
+                              width: `${Math.min(100, metrics.progress.percentage)}%`,
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-white opacity-20 animate-pulse"></div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] sm:text-xs text-gray-600 font-medium">
+                            {metrics.progress.percentage.toFixed(1)}% Complete
+                          </span>
+                          <span className="text-[10px] sm:text-xs font-medium text-gray-700">
+                            Win Rate: {progress.itm}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3 border border-gray-100">
+                          <p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Win Rate</p>
+                          <p className="text-base sm:text-lg font-bold text-gray-900">{progress.itm}%</p>
+                          <p className="text-[10px] sm:text-xs text-gray-500">Target: {metrics.targetITM.toFixed(1)}%</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3 border border-gray-100">
+                          <p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">W/L Ratio</p>
+                          <p className="text-base sm:text-lg font-bold text-gray-900">{metrics.wins}/{metrics.losses}</p>
+                          <p className="text-[10px] sm:text-xs text-gray-500">RR: 1:{metrics.riskRewardRatio}</p>
+                        </div>
+                      </div>
+
+                      {/* Financial Metrics */}
+                      <div className="pt-3 sm:pt-4 border-t border-gray-200">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-2 sm:mb-3">
                           <div>
-                            <p className="text-xs text-gray-600">Win Rate</p>
-                            <p className="text-sm font-medium">{progress.itm}%</p>
+                            <p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Current Balance</p>
+                            <p className="text-lg sm:text-xl font-bold text-gray-900">
+                              ${currentBalance.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] sm:text-xs text-gray-600 mb-0.5 sm:mb-1">Net P/L</p>
+                            <p className={`text-lg sm:text-xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {netProfit >= 0 ? '+' : ''}${netProfit.toFixed(2)}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between sm:block">
-                          <div className="text-right sm:text-left">
-                            <p className="text-xs text-gray-600">Progress</p>
-                            <p className="text-sm font-medium">{progress.trades}</p>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm">
-                        <div className="flex items-center justify-between sm:block">
-                          <span className="text-gray-600">W/L: {metrics.wins}/{metrics.losses}</span>
-                        </div>
-                        <div className="flex items-center justify-between sm:block">
-                          <span className="text-gray-600 sm:text-right">RR: 1:{metrics.riskRewardRatio}</span>
+                        <div className="bg-blue-50 rounded-lg p-2.5 sm:p-3 border border-blue-100">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] sm:text-xs text-blue-700 font-medium">Projected Profit</span>
+                            <span className="text-sm sm:text-base font-bold text-blue-600">
+                              ${targetProfit.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Session Metrics */}
-                    <div className="space-y-3 pt-4 border-t border-gray-200">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="flex-1">
-                          <p className="text-xs text-gray-600">Current Balance</p>
-                          <p className="text-lg font-bold text-gray-900">
-                            ${currentBalance.toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="flex-1 text-left sm:text-right">
-                          <p className="text-xs text-gray-600">Net P/L</p>
-                          <p className={`text-lg font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {netProfit >= 0 ? '+' : ''}${netProfit.toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-3 border-t border-gray-100">
-                        <p className="text-xs text-gray-600">Projected Profit</p>
-                        <p className="text-sm font-semibold text-blue-600">
-                          ${targetProfit.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
+                    {/* Hover Effect Overlay */}
+                    <div className="absolute inset-0 bg-blue-500 opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none"></div>
                   </motion.div>
                 );
               })}

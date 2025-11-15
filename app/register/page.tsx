@@ -44,7 +44,7 @@ export default function RegisterPage() {
       const result = await register(formData.email, formData.password, formData.name);
 
       if (result.success) {
-        showToast('Registration successful! Welcome to BBT Trades!', 'success');
+        showToast('Registration successful! Welcome to BBTfinance!', 'success');
         router.push('/dashboard');
       } else {
         showToast(result.message, 'error');
@@ -80,14 +80,26 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="flex items-center">
-              <TrendingUp className="w-12 h-12 text-primary-600" />
+            <div className="relative">
+              {/* Logo with gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900 to-black rounded-2xl opacity-90"></div>
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+                <TrendingUp className="w-8 h-8 sm:w-10 sm:h-10 text-white" strokeWidth={2.5} />
+              </div>
             </div>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            BBT Trades
+          <h2 className="mt-6 text-center text-3xl sm:text-4xl font-black text-gray-900">
+            <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-black bg-clip-text text-transparent">
+              BBT
+            </span>
+            <span className="text-gray-900">
+              finance
+            </span>
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-1 text-center text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            Trading Excellence
+          </p>
+          <p className="mt-3 text-center text-sm sm:text-base text-gray-600">
             Create your trading account
           </p>
         </div>

@@ -37,6 +37,7 @@ export interface SessionContextType {
     active: number;
     completed: number;
   };
+  reloadSessions: () => Promise<void>;
 }
 
 export interface Trade {

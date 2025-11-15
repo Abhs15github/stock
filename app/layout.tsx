@@ -11,7 +11,7 @@ import { AppWrapper } from './components/AppWrapper'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BBT Trades - Trading Performance Tracker',
+  title: 'BBTfinance - Trading Performance Tracker',
   description: 'Professional crypto trading performance tracker and calculator',
   icons: {
     icon: [

@@ -99,23 +99,24 @@ export default function NewSessionPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="max-w-3xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-3xl mx-auto py-4 px-3 sm:py-6 sm:px-4 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           {/* Header */}
-          <div className="flex items-center space-x-4 mb-6">
+          <div className="flex items-center space-x-3 sm:space-x-4 mb-4 sm:mb-6">
             <Link
               href="/sessions"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200 flex-shrink-0"
+              aria-label="Back to sessions"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Create New Session</h1>
-              <p className="text-gray-600 mt-1">Set up a new trading session with your goals</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Create New Session</h1>
+              <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">Set up a new trading session with your goals</p>
             </div>
           </div>
 

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, AuthContextType } from '../types';
 import { storageUtils } from '../utils/storage';
+import { apiClient } from '../utils/api';
 
 const HARDCODED_USERS: Array<{
   id: string;
@@ -50,6 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const storedUser = storageUtils.getCurrentUser();
       if (!storedUser) {
+        apiClient.setUserId(null);
         setUser(null);
         return;
       }
@@ -59,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
 
       if (!matchedUser || storageUtils.isSessionExpired()) {
+        apiClient.setUserId(null);
         storageUtils.setCurrentUser(null);
         setUser(null);
         return;
@@ -71,6 +74,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: matchedUser.displayName,
         createdAt: storedUser.createdAt ?? new Date().toISOString(),
       };
+
+      // Ensure API client has the active user ID for subsequent requests
+      apiClient.setUserId(hydratedUser.id);
 
       setUser(hydratedUser);
     } catch (error) {
@@ -111,35 +117,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, message: 'Password is required' };
       }
 
-      const normalizedUsername = usernameInput.trim().toLowerCase();
+      // Use API for authentication
+      const response = await apiClient.login(usernameInput, password);
 
-      const matchedUser = HARDCODED_USERS.find(
-        (hardUser) => hardUser.username.toLowerCase() === normalizedUsername
-      );
+      if (response.success && response.user) {
+        const authenticatedUser: User = {
+          id: response.user.id,
+          email: response.user.email,
+          password: password,
+          name: response.user.displayName,
+          createdAt: response.user.createdAt || new Date().toISOString(),
+        };
 
-      if (!matchedUser) {
-        return { success: false, message: 'Invalid username or password' };
+        setUser(authenticatedUser);
+        storageUtils.setCurrentUser(authenticatedUser);
+        storageUtils.setSessionExpiry(Date.now() + SESSION_DURATION_MS);
+
+        return { success: true, message: 'Login successful' };
       }
 
-      if (matchedUser.password !== password) {
-        return { success: false, message: 'Invalid username or password' };
-      }
-
-      const authenticatedUser: User = {
-        id: matchedUser.id,
-        email: `${matchedUser.username}@secure.local`,
-        password: matchedUser.password,
-        name: matchedUser.displayName,
-        createdAt: new Date().toISOString(),
-      };
-
-      setUser(authenticatedUser);
-      storageUtils.setCurrentUser(authenticatedUser);
-
-      // Set session expiry (30 minutes from now)
-      storageUtils.setSessionExpiry(Date.now() + SESSION_DURATION_MS);
-
-      return { success: true, message: 'Login successful' };
+      return { success: false, message: response.message || 'Login failed' };
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, message: 'Login failed. Please try again.' };
@@ -150,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setUser(null);
       storageUtils.setCurrentUser(null);
+      apiClient.logout();
     } catch (error) {
       console.error('Logout error:', error);
     }

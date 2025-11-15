@@ -280,7 +280,7 @@ export const BBTTradePlanner: React.FC<BBTTradePlannerProps> = ({ onPlanCreated 
           <div className="flex-1 min-w-0">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
               <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600 flex-shrink-0" />
-              BBT Trade Planner
+              BBTfinance Trade Planner
             </h3>
             <p className="text-xs sm:text-sm text-gray-600 mt-1">
               Create comprehensive trade plans with risk management and optimization

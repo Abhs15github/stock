@@ -1,10 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Trade, TradeContextType } from '../types';
-import { apiClient } from '../utils/api';
-import { useAuth } from './AuthContext';
 import { storageUtils } from '../utils/storage';
+import { useAuth } from './AuthContext';
 const calculateSessionTargetProfit = (
   capital: number,
   totalTrades: number,
@@ -145,41 +144,20 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { user } = useAuth();
   const [trades, setTrades] = useState<Trade[]>([]);
 
-  const resolveActiveUserId = useCallback(() => {
-    if (user?.id) {
-      return user.id;
-    }
-    const storedUser = storageUtils.getCurrentUser();
-    return storedUser?.id ?? null;
-  }, [user]);
-
-  const loadTrades = useCallback(async () => {
-    const activeUserId = resolveActiveUserId();
-
-    if (!activeUserId) {
-      setTrades([]);
-      return;
-    }
-
-    try {
-      const response = await apiClient.getTrades();
-      if (response.success && response.trades) {
-        const userTrades = response.trades.filter(
-          (trade: Trade) => trade.userId === activeUserId
-        );
+  useEffect(() => {
+    if (user) {
+      try {
+        const allTrades = storageUtils.getTrades();
+        const userTrades = allTrades.filter(trade => trade.userId === user.id);
         setTrades(userTrades);
-      } else {
+      } catch (error) {
+        console.error('Error loading trades:', error);
         setTrades([]);
       }
-    } catch (error) {
-      console.error('Error loading trades:', error);
+    } else {
       setTrades([]);
     }
-  }, [resolveActiveUserId]);
-
-  useEffect(() => {
-    loadTrades();
-  }, [loadTrades]);
+  }, [user]);
 
   const calculateProfitOrLoss = (entryPrice: number, exitPrice: number, investment: number, type: 'buy' | 'sell') => {
     let profitOrLoss: number;
@@ -250,16 +228,15 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updatedAt: new Date().toISOString(),
       };
 
-      // Save to API
-      const response = await apiClient.createTrade(newTrade);
+      // Get all trades and add the new one
+      const allTrades = storageUtils.getTrades();
+      allTrades.push(newTrade);
+      storageUtils.saveTrades(allTrades);
 
-      if (response.success && response.trade) {
-        // Update local state
-        setTrades(prev => [...prev, response.trade]);
-        return { success: true, message: 'Trade added successfully' };
-      }
+      // Update local state
+      setTrades(prev => [...prev, newTrade]);
 
-      return { success: false, message: response.message || 'Failed to add trade' };
+      return { success: true, message: 'Trade added successfully' };
     } catch (error) {
       console.error('Add trade error:', error);
       return { success: false, message: 'Failed to add trade. Please try again.' };
@@ -272,15 +249,17 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return { success: false, message: 'User must be logged in to update trades' };
       }
 
-      // Find the trade in local state
-      const trade = trades.find(t => t.id === id);
-      if (!trade) {
+      // Get all trades
+      const allTrades = storageUtils.getTrades();
+      const tradeIndex = allTrades.findIndex(trade => trade.id === id && trade.userId === user.id);
+
+      if (tradeIndex === -1) {
         return { success: false, message: 'Trade not found' };
       }
 
       // Update trade
       const updatedTrade = {
-        ...trade,
+        ...allTrades[tradeIndex],
         ...updates,
         updatedAt: new Date().toISOString(),
       };
@@ -299,16 +278,14 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
 
-      // Update via API
-      const response = await apiClient.updateTrade(id, updatedTrade);
+      // Save updated trades
+      allTrades[tradeIndex] = updatedTrade;
+      storageUtils.saveTrades(allTrades);
 
-      if (response.success && response.trade) {
-        // Update local state
-        setTrades(prev => prev.map(t => t.id === id ? response.trade : t));
-        return { success: true, message: 'Trade updated successfully' };
-      }
+      // Update local state
+      setTrades(prev => prev.map(trade => trade.id === id ? updatedTrade : trade));
 
-      return { success: false, message: response.message || 'Failed to update trade' };
+      return { success: true, message: 'Trade updated successfully' };
     } catch (error) {
       console.error('Update trade error:', error);
       return { success: false, message: 'Failed to update trade. Please try again.' };
@@ -321,16 +298,22 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return { success: false, message: 'User must be logged in to delete trades' };
       }
 
-      // Delete via API
-      const response = await apiClient.deleteTrade(id);
+      // Get all trades
+      const allTrades = storageUtils.getTrades();
+      const tradeExists = allTrades.find(trade => trade.id === id && trade.userId === user.id);
 
-      if (response.success) {
-        // Update local state
-        setTrades(prev => prev.filter(trade => trade.id !== id));
-        return { success: true, message: 'Trade deleted successfully' };
+      if (!tradeExists) {
+        return { success: false, message: 'Trade not found' };
       }
 
-      return { success: false, message: response.message || 'Failed to delete trade' };
+      // Remove trade
+      const filteredTrades = allTrades.filter(trade => !(trade.id === id && trade.userId === user.id));
+      storageUtils.saveTrades(filteredTrades);
+
+      // Update local state
+      setTrades(prev => prev.filter(trade => trade.id !== id));
+
+      return { success: true, message: 'Trade deleted successfully' };
     } catch (error) {
       console.error('Delete trade error:', error);
       return { success: false, message: 'Failed to delete trade. Please try again.' };
@@ -359,29 +342,36 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return trades.filter(trade => trade.sessionId === sessionId);
   };
 
-  const reloadTrades = async () => {
-    await loadTrades();
+  const reloadTrades = () => {
+    if (user) {
+      try {
+        const allTrades = storageUtils.getTrades();
+        const userTrades = allTrades.filter(trade => trade.userId === user.id);
+        setTrades(userTrades);
+        console.log('Trades reloaded:', userTrades.length);
+      } catch (error) {
+        console.error('Error reloading trades:', error);
+      }
+    }
   };
 
   const alignSessionProfit = async (sessionId: string, targetProfit: number) => {
     if (!user) return;
 
     try {
-      // Get session trades from API
-      const response = await apiClient.getSessionTrades(sessionId);
-      if (!response.success || !response.trades) {
-        return;
-      }
+      const allTrades = storageUtils.getTrades();
+      const sessionTrades = allTrades.filter(
+        (trade) => trade.sessionId === sessionId && trade.userId === user.id
+      );
 
-      const sessionTrades = response.trades;
-      const completedTrades = sessionTrades.filter((trade: Trade) => trade.status !== 'pending');
+      const completedTrades = sessionTrades.filter((trade) => trade.status !== 'pending');
 
       if (completedTrades.length === 0) {
         return;
       }
 
       const actualProfit = completedTrades.reduce(
-        (sum: number, trade: Trade) => sum + trade.profitOrLoss,
+        (sum, trade) => sum + trade.profitOrLoss,
         0
       );
 
@@ -397,11 +387,11 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const selectTradeForAdjustment = () => {
         if (profitDelta > 0) {
-          return [...sortedCompleted].reverse().find((trade: Trade) => trade.status === 'won');
+          return [...sortedCompleted].reverse().find((trade) => trade.status === 'won');
         }
 
         if (profitDelta < 0) {
-          return [...sortedCompleted].reverse().find((trade: Trade) => trade.status === 'lost');
+          return [...sortedCompleted].reverse().find((trade) => trade.status === 'lost');
         }
 
         return sortedCompleted[sortedCompleted.length - 1];
@@ -410,6 +400,14 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const tradeToAdjust = selectTradeForAdjustment() ?? sortedCompleted[sortedCompleted.length - 1];
 
       if (!tradeToAdjust) {
+        return;
+      }
+
+      const tradeIndex = allTrades.findIndex(
+        (trade) => trade.id === tradeToAdjust.id && trade.userId === user.id
+      );
+
+      if (tradeIndex === -1) {
         return;
       }
 
@@ -476,21 +474,18 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ? Number(((adjustedProfit / adjustedInvestment) * 100).toFixed(2))
           : tradeToAdjust.profitOrLossPercentage;
 
-      const updatedTrade = {
-        ...tradeToAdjust,
+      allTrades[tradeIndex] = {
+        ...allTrades[tradeIndex],
         investment: adjustedInvestment,
         profitOrLoss: adjustedProfit,
         profitOrLossPercentage: adjustedPercentage,
         updatedAt: new Date().toISOString(),
       };
 
-      // Update via API
-      const updateResponse = await apiClient.updateTrade(tradeToAdjust.id, updatedTrade);
+      storageUtils.saveTrades(allTrades);
 
-      if (updateResponse.success) {
-        // Update local state
-        setTrades(prev => prev.map(t => t.id === tradeToAdjust.id ? updateResponse.trade : t));
-      }
+      const userTrades = allTrades.filter((trade) => trade.userId === user.id);
+      setTrades(userTrades);
     } catch (error) {
       console.error('Error aligning session profit:', error);
     }
@@ -505,22 +500,19 @@ const createNextPendingTrade = async (
   targetAccuracy: number
 ) => {
     try {
-      // Get existing trades for this session from API
-      const response = await apiClient.getSessionTrades(sessionId);
-      if (!response.success || !response.trades) {
-        return { success: false, message: 'Failed to load session trades' };
-      }
-
-      const sessionTrades = response.trades;
-
+      const allTrades = storageUtils.getTrades();
+      
+      // Get existing trades for this session
+      const sessionTrades = allTrades.filter(trade => trade.sessionId === sessionId);
+      
       // Check if target trades limit has been reached
-      const completedTrades = sessionTrades.filter((t: Trade) => t.status !== 'pending');
+      const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
     if (completedTrades.length >= targetTrades) {
         console.log('Target trades limit reached:', completedTrades.length, '/', targetTrades);
         return { success: false, message: 'Target trades limit reached' };
       }
 
-      const wins = completedTrades.filter((trade: Trade) => trade.status === 'won').length;
+      const wins = completedTrades.filter((trade) => trade.status === 'won').length;
       const requiredWins = Math.max(
         0,
         Math.ceil(targetTrades * (targetAccuracy / 100))
@@ -530,14 +522,14 @@ const createNextPendingTrade = async (
         console.log('Target ITM reached:', wins, '/', requiredWins);
         return { success: false, message: 'Target ITM reached' };
       }
-
+      
       // Calculate current balance based on completed trades
       let currentBalance = sessionCapital;
-
-      completedTrades.forEach((trade: Trade) => {
+      
+      completedTrades.forEach(trade => {
         currentBalance += trade.profitOrLoss;
       });
-
+      
       if (currentBalance <= 0) {
         console.log('No available balance to allocate for next trade.');
         return { success: false, message: 'Insufficient balance for next trade' };
@@ -601,21 +593,17 @@ const createNextPendingTrade = async (
         updatedAt: new Date(timestamp).toISOString(),
       };
 
-      // Save to API
-      const createResponse = await apiClient.createTrade(newTrade);
-
-      if (createResponse.success && createResponse.trade) {
-        // Update local state
-        setTrades(prev => [...prev, createResponse.trade]);
-
-        console.log('Created next pending trade with stake:', nextStake);
-        console.log('Current balance:', currentBalance);
-        console.log('Completed trades:', completedTrades.length, '/', targetTrades);
-
-        return { success: true, message: 'Next pending trade created' };
-      }
-
-      return { success: false, message: createResponse.message || 'Failed to create trade' };
+      allTrades.push(newTrade);
+      storageUtils.saveTrades(allTrades);
+      
+      // Update local state
+      setTrades(prev => [...prev, newTrade]);
+      
+      console.log('Created next pending trade with stake:', nextStake);
+      console.log('Current balance:', currentBalance);
+      console.log('Completed trades:', completedTrades.length, '/', targetTrades);
+      
+      return { success: true, message: 'Next pending trade created' };
     } catch (error) {
       console.error('Error creating next pending trade:', error);
       return { success: false, message: 'Failed to create next pending trade' };
@@ -628,11 +616,14 @@ const createNextPendingTrade = async (
         return { success: false, message: 'User must be logged in to record trade results' };
       }
 
-      // Find the trade in local state
-      const trade = trades.find(t => t.id === tradeId);
-      if (!trade) {
+      const allTrades = storageUtils.getTrades();
+      const tradeIndex = allTrades.findIndex(trade => trade.id === tradeId && trade.userId === user.id);
+
+      if (tradeIndex === -1) {
         return { success: false, message: 'Trade not found' };
       }
+
+      const trade = allTrades[tradeIndex];
 
       if (trade.status !== 'pending') {
         return { success: false, message: 'Trade result already recorded' };
@@ -661,16 +652,21 @@ const createNextPendingTrade = async (
         updatedAt: new Date().toISOString(),
       };
 
-      // Update via API
-      const response = await apiClient.updateTrade(tradeId, updatedTrade);
+      allTrades[tradeIndex] = updatedTrade;
 
-      if (response.success && response.trade) {
-        // Update local state
-        setTrades(prev => prev.map(t => t.id === tradeId ? response.trade : t));
-        return { success: true, message: `Trade marked as ${result}` };
-      }
+      storageUtils.saveTrades(allTrades);
 
-      return { success: false, message: response.message || 'Failed to record trade result' };
+      // Update local state - only update the specific trade that was recorded
+      setTrades(prev => {
+        const updatedTrades = [...prev];
+        const idx = updatedTrades.findIndex(t => t.id === tradeId);
+        if (idx !== -1) {
+          updatedTrades[idx] = updatedTrade;
+        }
+        return updatedTrades;
+      });
+
+      return { success: true, message: `Trade marked as ${result}` };
     } catch (error) {
       console.error('Record trade result error:', error);
       return { success: false, message: 'Failed to record trade result. Please try again.' };

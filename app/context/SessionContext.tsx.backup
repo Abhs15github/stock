@@ -1,12 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TradingSession, SessionContextType } from '../types';
 import { validateSessionData } from '../utils/validation';
-import { apiClient } from '../utils/api';
+import { storageUtils } from '../utils/storage';
 import { useAuth } from './AuthContext';
 import { BASE_RISK_PERCENT } from '../constants/riskConfig';
-import { storageUtils } from '../utils/storage';
 
 const SessionContext = createContext<SessionContextType | null>(null);
 
@@ -22,41 +21,20 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const { user } = useAuth();
   const [sessions, setSessions] = useState<TradingSession[]>([]);
 
-  const resolveActiveUserId = useCallback(() => {
-    if (user?.id) {
-      return user.id;
-    }
-    const storedUser = storageUtils.getCurrentUser();
-    return storedUser?.id ?? null;
-  }, [user]);
-
-  const loadSessions = useCallback(async () => {
-    const activeUserId = resolveActiveUserId();
-
-    if (!activeUserId) {
-      setSessions([]);
-      return;
-    }
-
-    try {
-      const response = await apiClient.getSessions();
-      if (response.success && response.sessions) {
-        const userSessions = response.sessions.filter(
-          (session: TradingSession) => session.userId === activeUserId
-        );
+  useEffect(() => {
+    if (user) {
+      try {
+        const allSessions = storageUtils.getSessions();
+        const userSessions = allSessions.filter(session => session.userId === user.id);
         setSessions(userSessions);
-      } else {
+      } catch (error) {
+        console.error('Error loading sessions:', error);
         setSessions([]);
       }
-    } catch (error) {
-      console.error('Error loading sessions:', error);
+    } else {
       setSessions([]);
     }
-  }, [resolveActiveUserId]);
-
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+  }, [user]);
 
   const createSession = async (sessionData: Omit<TradingSession, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; message: string; sessionId?: string }> => {
     try {
@@ -79,20 +57,18 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updatedAt: new Date().toISOString(),
       };
 
-      // Save to API
-      const response = await apiClient.createSession(newSession);
+      // Get all sessions and add the new one
+      const allSessions = storageUtils.getSessions();
+      allSessions.push(newSession);
+      storageUtils.saveSessions(allSessions);
 
-      if (response.success && response.session) {
-        // Update local state
-        setSessions(prev => [...prev, response.session]);
+      // Update local state
+      setSessions(prev => [...prev, newSession]);
 
-        // Create ALL pending trades automatically based on totalTrades
-        await createAllPendingTrades(response.session);
+      // Create ALL pending trades automatically based on totalTrades
+      await createAllPendingTrades(newSession);
 
-        return { success: true, message: 'Session created successfully', sessionId: response.session.id };
-      }
-
-      return { success: false, message: response.message || 'Failed to create session' };
+      return { success: true, message: 'Session created successfully', sessionId: newSession.id };
     } catch (error) {
       console.error('Create session error:', error);
       return { success: false, message: 'Failed to create session. Please try again.' };
@@ -108,25 +84,25 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createNextPendingTrade = async (session: TradingSession) => {
     try {
       const riskPercent = calculateRiskPercentage();
-
-      // Get existing trades for this session from API
-      const tradesResponse = await apiClient.getSessionTrades(session.id);
-      const sessionTrades = tradesResponse.success ? tradesResponse.trades : [];
-
+      const allTrades = storageUtils.getTrades();
+      
+      // Get existing trades for this session
+      const sessionTrades = allTrades.filter(trade => trade.sessionId === session.id);
+      
       // Check if target trades limit has been reached
-      const completedTrades = sessionTrades.filter((t: any) => t.status !== 'pending');
+      const completedTrades = sessionTrades.filter(t => t.status !== 'pending');
       if (completedTrades.length >= session.totalTrades) {
         console.log('Target trades limit reached:', completedTrades.length, '/', session.totalTrades);
         return;
       }
-
+      
       // Calculate current balance based on completed trades
       let currentBalance = session.capital;
-
-      completedTrades.forEach((trade: any) => {
+      
+      completedTrades.forEach(trade => {
         currentBalance += trade.profitOrLoss;
       });
-
+      
       // Calculate stake as percentage of initial session capital for consistency
       const calculatedRisk = session.capital * riskPercent;
       const timestamp = Date.now();
@@ -148,9 +124,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updatedAt: new Date(timestamp).toISOString(),
       };
 
-      // Save to API
-      await apiClient.createTrade(newTrade);
-
+      allTrades.push(newTrade);
+      storageUtils.saveTrades(allTrades);
+      
       console.log('Created next pending trade with stake:', calculatedRisk);
       console.log('Current balance:', currentBalance);
       console.log('Completed trades:', completedTrades.length, '/', session.totalTrades);
@@ -162,7 +138,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createAllPendingTrades = async (session: TradingSession) => {
     try {
       console.log('Creating initial pending trade for session:', session.id);
-
+      
       // Only create the first pending trade
       await createNextPendingTrade(session);
     } catch (error) {
@@ -176,19 +152,29 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return { success: false, message: 'User must be logged in to update sessions' };
       }
 
+      // Get all sessions
+      const allSessions = storageUtils.getSessions();
+      const sessionIndex = allSessions.findIndex(session => session.id === id && session.userId === user.id);
+
+      if (sessionIndex === -1) {
+        return { success: false, message: 'Session not found' };
+      }
+
+      // Update session
+      const updatedSession = {
+        ...allSessions[sessionIndex],
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+
       // Validate if updating core data
       if (updates.name || updates.capital || updates.totalTrades || updates.accuracy || updates.riskRewardRatio) {
-        const currentSession = sessions.find(s => s.id === id);
-        if (!currentSession) {
-          return { success: false, message: 'Session not found' };
-        }
-
         const validation = validateSessionData({
-          name: updates.name || currentSession.name,
-          capital: updates.capital || currentSession.capital,
-          totalTrades: updates.totalTrades || currentSession.totalTrades,
-          accuracy: updates.accuracy || currentSession.accuracy,
-          riskRewardRatio: updates.riskRewardRatio || currentSession.riskRewardRatio,
+          name: updatedSession.name,
+          capital: updatedSession.capital,
+          totalTrades: updatedSession.totalTrades,
+          accuracy: updatedSession.accuracy,
+          riskRewardRatio: updatedSession.riskRewardRatio,
         });
 
         if (!validation.isValid) {
@@ -196,19 +182,14 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
 
-      // Update via API
-      const response = await apiClient.updateSession(id, {
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      });
+      // Save updated sessions
+      allSessions[sessionIndex] = updatedSession;
+      storageUtils.saveSessions(allSessions);
 
-      if (response.success && response.session) {
-        // Update local state
-        setSessions(prev => prev.map(session => session.id === id ? response.session : session));
-        return { success: true, message: 'Session updated successfully' };
-      }
+      // Update local state
+      setSessions(prev => prev.map(session => session.id === id ? updatedSession : session));
 
-      return { success: false, message: response.message || 'Failed to update session' };
+      return { success: true, message: 'Session updated successfully' };
     } catch (error) {
       console.error('Update session error:', error);
       return { success: false, message: 'Failed to update session. Please try again.' };
@@ -221,16 +202,22 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return { success: false, message: 'User must be logged in to delete sessions' };
       }
 
-      // Delete via API
-      const response = await apiClient.deleteSession(id);
+      // Get all sessions
+      const allSessions = storageUtils.getSessions();
+      const sessionExists = allSessions.find(session => session.id === id && session.userId === user.id);
 
-      if (response.success) {
-        // Update local state
-        setSessions(prev => prev.filter(session => session.id !== id));
-        return { success: true, message: 'Session deleted successfully' };
+      if (!sessionExists) {
+        return { success: false, message: 'Session not found' };
       }
 
-      return { success: false, message: response.message || 'Failed to delete session' };
+      // Remove session
+      const filteredSessions = allSessions.filter(session => !(session.id === id && session.userId === user.id));
+      storageUtils.saveSessions(filteredSessions);
+
+      // Update local state
+      setSessions(prev => prev.filter(session => session.id !== id));
+
+      return { success: true, message: 'Session deleted successfully' };
     } catch (error) {
       console.error('Delete session error:', error);
       return { success: false, message: 'Failed to delete session. Please try again.' };
@@ -251,7 +238,6 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     updateSession,
     deleteSession,
     getSessionStats,
-    reloadSessions: loadSessions,
   };
 
   return (

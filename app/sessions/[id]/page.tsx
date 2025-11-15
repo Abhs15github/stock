@@ -477,8 +477,17 @@ export default function SessionDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div className="flex items-center space-x-3 sm:space-x-4 mb-3 sm:mb-0">
               <button
-                onClick={() => router.back()}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={() => {
+                  // Check if there's history to go back to
+                  if (window.history.length > 1) {
+                    router.back();
+                  } else {
+                    // Fallback to sessions page
+                    router.push('/sessions');
+                  }
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
+                aria-label="Go back"
               >
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
               </button>
