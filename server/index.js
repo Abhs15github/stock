@@ -7,15 +7,27 @@ const app = express();
 
 // Middleware
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'https://bbtfinance.com',
-  'https://www.bbtfinance.com',
+  /^http:\/\/localhost:3000$/,
+  /^http:\/\/127\.0\.0\.1:3000$/,
+  /^https:\/\/([a-z0-9-]+\.)?bbtfinance\.com$/i,
+  /^https:\/\/stock-psi-one\.vercel\.app$/i,
+  /^https:\/\/stock-abhs15githubs-projects\.vercel\.app$/i,
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return allowed === origin;
+    });
+
+    if (isAllowed) {
       return callback(null, true);
     }
     console.warn(`Blocked CORS request from origin: ${origin}`);
