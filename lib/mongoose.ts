@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://localhost:27017/bbtfinance';
+const DEFAULT_URI =
+  'mongodb+srv://abhitam33_db_user:gdndAVijei64DHgw@cluster0.sn35sbd.mongodb.net/?appName=Cluster0';
+
+const MONGODB_URI = process.env.MONGODB_URI || DEFAULT_URI;
 
 if (!MONGODB_URI) {
   throw new Error('Missing MONGODB_URI environment variable');
