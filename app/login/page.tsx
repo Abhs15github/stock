@@ -91,8 +91,8 @@ export default function LoginPage() {
             <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-black bg-clip-text text-transparent">
               BBT
             </span>
-            <span className="text-gray-900">
-              finance
+            <span className="text-gray-900 ml-2">
+              FINANCE
             </span>
           </h2>
           <p className="mt-1 text-center text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide">

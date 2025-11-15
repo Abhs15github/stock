@@ -44,7 +44,7 @@ export default function RegisterPage() {
       const result = await register(formData.email, formData.password, formData.name);
 
       if (result.success) {
-        showToast('Registration successful! Welcome to BBTfinance!', 'success');
+        showToast('Registration successful! Welcome to BBT FINANCE!', 'success');
         router.push('/dashboard');
       } else {
         showToast(result.message, 'error');
@@ -92,8 +92,8 @@ export default function RegisterPage() {
             <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-black bg-clip-text text-transparent">
               BBT
             </span>
-            <span className="text-gray-900">
-              finance
+            <span className="text-gray-900 ml-2">
+              FINANCE
             </span>
           </h2>
           <p className="mt-1 text-center text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide">

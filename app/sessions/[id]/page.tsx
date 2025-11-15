@@ -822,20 +822,38 @@ export default function SessionDetailPage() {
                           disabled={
                             recordingTrade === trade.id || isTargetReached
                           }
-                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
                         >
-                          <CheckCircle className="w-4 h-4" />
-                          <span>WON</span>
+                          {recordingTrade === trade.id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              <span>WON</span>
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={() => handleRecordResult(trade.id, "lost")}
                           disabled={
                             recordingTrade === trade.id || isTargetReached
                           }
-                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
                         >
-                          <XCircle className="w-4 h-4" />
-                          <span>LOST</span>
+                          {recordingTrade === trade.id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-4 h-4" />
+                              <span>LOST</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>

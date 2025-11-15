@@ -35,13 +35,13 @@ export const Header: React.FC = () => {
                 </div>
               </div>
               {/* Brand Name - Desktop */}
-              <div className="ml-2.5 sm:ml-3 hidden xs:block">
-                <div className="flex items-baseline">
+              <div className="ml-3 sm:ml-4 hidden xs:block">
+                <div className="flex items-baseline space-x-1">
                   <span className="text-lg sm:text-xl lg:text-2xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-black bg-clip-text text-transparent">
                     BBT
                   </span>
                   <span className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-700">
-                    finance
+                    FINANCE
                   </span>
                 </div>
                 <p className="text-[8px] sm:text-[9px] font-medium text-gray-500 -mt-1 tracking-wide uppercase">
@@ -49,13 +49,15 @@ export const Header: React.FC = () => {
                 </p>
               </div>
               {/* Brand Name - Mobile */}
-              <div className="ml-2 xs:hidden">
-                <span className="text-base font-black bg-gradient-to-r from-gray-900 via-blue-800 to-black bg-clip-text text-transparent">
-                  BBT
-                </span>
-                <span className="text-base font-bold text-gray-700">
-                  finance
-                </span>
+              <div className="ml-2.5 xs:hidden">
+                <div className="flex items-baseline space-x-0.5">
+                  <span className="text-base font-black bg-gradient-to-r from-gray-900 via-blue-800 to-black bg-clip-text text-transparent">
+                    BBT
+                  </span>
+                  <span className="text-base font-bold text-gray-700">
+                    FINANCE
+                  </span>
+                </div>
               </div>
             </Link>
           </div>

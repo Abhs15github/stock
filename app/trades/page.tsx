@@ -543,6 +543,7 @@ const TradeModal: React.FC<{
     userId: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previousStatus, setPreviousStatus] = useState<'pending' | 'won' | 'lost'>('pending');
 
   useEffect(() => {
     if (mode === 'edit' && trade) {
@@ -558,6 +559,7 @@ const TradeModal: React.FC<{
         date: trade.date,
         userId: trade.userId
       });
+      setPreviousStatus(trade.status);
     } else {
       setFormData({
         pairName: '',
@@ -571,6 +573,7 @@ const TradeModal: React.FC<{
         date: new Date().toISOString(),
         userId: ''
       });
+      setPreviousStatus('pending');
     }
   }, [mode, trade]);
 
@@ -697,15 +700,30 @@ const TradeModal: React.FC<{
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Status
                 </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as 'pending' | 'won' | 'lost' }))}
-                  className="input-field"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="won">Won</option>
-                  <option value="lost">Lost</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={formData.status}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as 'pending' | 'won' | 'lost';
+                      setFormData(prev => ({ ...prev, status: newStatus }));
+                      if (mode === 'edit' && newStatus !== previousStatus) {
+                        setIsSubmitting(true);
+                        setTimeout(() => setIsSubmitting(false), 100);
+                      }
+                    }}
+                    className="input-field"
+                    disabled={isSubmitting}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                  {isSubmitting && formData.status !== previousStatus && (
+                    <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

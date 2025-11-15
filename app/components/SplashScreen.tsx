@@ -65,8 +65,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 <span className="inline-block bg-gradient-to-r from-white via-blue-300 to-white bg-clip-text text-transparent">
                   BBT
                 </span>
-                <span className="inline-block text-white font-bold">
-                  finance
+                <span className="inline-block text-white font-bold ml-2">
+                  FINANCE
                 </span>
               </h1>
               <p className="text-xs sm:text-sm md:text-base font-semibold text-blue-200 tracking-widest uppercase">
