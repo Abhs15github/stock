@@ -42,7 +42,7 @@ export default function DashboardPage() {
   }
 
   const sessionStats = getSessionStats();
-  const tradeStats = getTradeStats();
+  const tradeStats = getTradeStats(sessions);
 
   // Get recent sessions (last 3)
   const recentSessions = sessions
