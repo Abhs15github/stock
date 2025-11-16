@@ -13,6 +13,7 @@ interface GlobalMongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
 }
+//comment
 
 declare global {
   // eslint-disable-next-line no-var
