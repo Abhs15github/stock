@@ -180,7 +180,7 @@ export default function SessionsPage() {
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
             <div className="mb-0">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">BBTfinance Sessions</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">BBT FINANCE Sessions</h1>
               <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">Manage and track your trading sessions</p>
             </div>
             <Link

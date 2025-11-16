@@ -782,15 +782,15 @@ export default function SessionDetailPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 relative"
+                className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 relative"
               >
-                {/* Blur Overlay with Loader when processing */}
+                {/* Blur Overlay with Loader when processing - Optimized for mobile */}
                 {recordingTrade && (
-                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-                    <div className="text-center">
-                      <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-lg font-semibold text-gray-800">Processing trade result...</p>
-                      <p className="text-sm text-gray-600 mt-2">Please wait</p>
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10 p-4">
+                    <div className="text-center max-w-xs">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3 sm:mb-4"></div>
+                      <p className="text-base sm:text-lg font-semibold text-gray-800">Processing trade result...</p>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">Please wait</p>
                     </div>
                   </div>
                 )}
@@ -801,27 +801,27 @@ export default function SessionDetailPage() {
                     Record Trade Results ({allPendingTrades.length} pending)
                   </h3>
                 </div>
-                <p className="text-sm text-yellow-800 mb-4">
+                <p className="text-xs sm:text-sm text-yellow-800 mb-3 sm:mb-4">
                   Update the outcome for each pending trade to continue.
                 </p>
 
                 {pendingTrades.map((trade) => (
                   <div
                     key={trade.id}
-                    className="bg-white rounded-lg p-4 mb-3 last:mb-0"
+                    className="bg-white rounded-lg p-3 sm:p-4 mb-3 last:mb-0"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                       <div className="w-full sm:w-auto">
-                        <p className="text-sm text-gray-600">Risk</p>
-                        <p className="text-xl font-bold">
+                        <p className="text-xs sm:text-sm text-gray-600 mb-1">Risk</p>
+                        <p className="text-lg sm:text-xl font-bold">
                           {formatCurrency(trade.investment)}
                         </p>
                       </div>
                       <div className="w-full sm:w-auto">
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs sm:text-sm text-gray-600 mb-1">
                           Potential Return
                         </p>
-                        <p className="text-xl font-bold text-green-600">
+                        <p className="text-lg sm:text-xl font-bold text-green-600">
                           {formatSignedCurrency(
                             trade.investment * session.riskRewardRatio
                           )}
@@ -833,17 +833,17 @@ export default function SessionDetailPage() {
                           disabled={
                             recordingTrade === trade.id || isTargetReached
                           }
-                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
+                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] touch-manipulation"
                         >
                           {recordingTrade === trade.id ? (
                             <>
                               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span>Processing...</span>
+                              <span className="text-sm sm:text-base font-medium">Processing...</span>
                             </>
                           ) : (
                             <>
-                              <CheckCircle className="w-4 h-4" />
-                              <span>WON</span>
+                              <CheckCircle className="w-5 h-5" />
+                              <span className="text-sm sm:text-base font-medium">WON</span>
                             </>
                           )}
                         </button>
@@ -852,17 +852,17 @@ export default function SessionDetailPage() {
                           disabled={
                             recordingTrade === trade.id || isTargetReached
                           }
-                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[40px]"
+                          className="flex w-full sm:w-auto items-center justify-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] touch-manipulation"
                         >
                           {recordingTrade === trade.id ? (
                             <>
                               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              <span>Processing...</span>
+                              <span className="text-sm sm:text-base font-medium">Processing...</span>
                             </>
                           ) : (
                             <>
-                              <XCircle className="w-4 h-4" />
-                              <span>LOST</span>
+                              <XCircle className="w-5 h-5" />
+                              <span className="text-sm sm:text-base font-medium">LOST</span>
                             </>
                           )}
                         </button>
