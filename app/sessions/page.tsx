@@ -65,7 +65,7 @@ export default function SessionsPage() {
 
   const stats = getSessionStats();
 
-  // CORRECTED CALCULATION LOGIC
+  // CORRECTED CALCULATION LOGIC - Using same formula as session detail page
   const calculateSessionMetrics = (session: any) => {
     // Get trades for this session from the TradeContext
     const trades = getSessionTrades(session.id);
@@ -76,16 +76,16 @@ export default function SessionsPage() {
     // Calculate wins and losses
     const wins = completedTrades.filter((t: any) => t.status === 'won').length;
     const losses = completedTrades.filter((t: any) => t.status === 'lost').length;
-    
+
     // Win Rate Calculation
-    const winRate = completedTrades.length > 0 
-      ? (wins / completedTrades.length) * 100 
+    const winRate = completedTrades.length > 0
+      ? (wins / completedTrades.length) * 100
       : 0;
-    
+
     // Net Profit and Current Balance
     const netProfit = completedTrades.reduce((sum: number, trade: any) => sum + trade.profitOrLoss, 0);
     const currentBalance = session.capital + netProfit;
-    
+
     // Progress tracking
     const targetTrades = session.totalTrades || 10;
     const progress = {
@@ -93,29 +93,34 @@ export default function SessionsPage() {
       target: targetTrades,
       percentage: (completedTrades.length / targetTrades) * 100
     };
-    
+
     // Required ITM (In-The-Money) - Breakeven win rate
     // Formula: 1 / (RR + 1)
     const rr = session.riskRewardRatio || 3;
     const requiredITM = (1 / (rr + 1)) * 100; // For 1:3 RR = 25%
-    
+
     // Target ITM (usually slightly higher than required for profitability)
-    const targetITM = session.targetITM || requiredITM + 5; // e.g., 30% for 1:3 RR
-    
-    // Calculate theoretical target profit based on expected value
-    // If all target trades are completed with current win rate
-    const riskPercentage = session.riskPercentage || 0.02; // 2% default
-    const avgStakeIfStarted = session.capital * riskPercentage;
-    
-    // Expected value per trade
-    const avgWin = avgStakeIfStarted * rr;
-    const avgLoss = avgStakeIfStarted;
-    const expectedValuePerTrade = (winRate / 100) * avgWin - ((100 - winRate) / 100) * avgLoss;
-    
-    // Target profit if all trades completed
-    const projectedTotalProfit = expectedValuePerTrade * targetTrades;
-    const targetBalance = session.capital + projectedTotalProfit;
-    
+    const targetITM = session.accuracy || 30; // Use session's accuracy as target ITM
+
+    // Calculate Target Profit using the SAME formula as session detail page
+    // REFERENCE WEBSITE FORMULA: Uses FIXED 60% win rate for TARGET calculation
+    const baseRisk = 0.06; // 6% base risk per trade for target calculation
+    const fixedWinRate = 0.60; // Fixed 60% win rate benchmark for aspirational target
+    const expectedWins = targetTrades * fixedWinRate;
+    const expectedLosses = targetTrades * (1 - fixedWinRate);
+
+    // Calculate target multiplier using geometric mean
+    const winMultiplier = 1 + (rr * baseRisk);  // e.g., 1 + (3 × 0.06) = 1.18
+    const lossMultiplier = 1 - baseRisk;  // e.g., 1 - 0.06 = 0.94
+
+    const targetMultiplier = Math.pow(winMultiplier, expectedWins) * Math.pow(lossMultiplier, expectedLosses);
+
+    const targetBalance = session.capital * targetMultiplier;
+    const rawProfit = targetBalance - session.capital;
+    const step = Math.max(Number((rr * 0.01).toFixed(2)), 0.01);
+    const normalizedProfit = step > 0 ? Math.round(rawProfit / step) * step : rawProfit;
+    const targetNetProfit = Number(normalizedProfit.toFixed(2));
+
     return {
       currentBalance,
       netProfit,
@@ -125,7 +130,8 @@ export default function SessionsPage() {
       progress,
       requiredITM,
       targetITM,
-      targetBalance,
+      targetBalance: session.capital + targetNetProfit,
+      targetNetProfit, // This is the actual target profit to display
       completedTrades: completedTrades.length,
       riskRewardRatio: rr
     };
@@ -146,8 +152,8 @@ export default function SessionsPage() {
 
   const calculateTargetProfit = (session: any) => {
     const metrics = calculateSessionMetrics(session);
-    // Return the profit amount, not the balance
-    return metrics.targetBalance - session.capital;
+    // Return the target net profit (same as session detail page)
+    return metrics.targetNetProfit;
   };
 
   const calculateCurrentBalance = (session: any) => {
@@ -357,7 +363,7 @@ export default function SessionsPage() {
 
                         <div className="bg-blue-50 rounded-lg p-2.5 sm:p-3 border border-blue-100">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] sm:text-xs text-blue-700 font-medium">Projected Profit</span>
+                            <span className="text-[10px] sm:text-xs text-blue-700 font-medium">Target Net Profit</span>
                             <span className="text-sm sm:text-base font-bold text-blue-600">
                               ${targetProfit.toFixed(2)}
                             </span>

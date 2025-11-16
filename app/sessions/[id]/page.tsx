@@ -782,8 +782,19 @@ export default function SessionDetailPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-yellow-50 border border-yellow-200 rounded-lg p-6"
+                className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 relative"
               >
+                {/* Blur Overlay with Loader when processing */}
+                {recordingTrade && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+                    <div className="text-center">
+                      <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-lg font-semibold text-gray-800">Processing trade result...</p>
+                      <p className="text-sm text-gray-600 mt-2">Please wait</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
                   <div className="text-2xl leading-none">⚠️</div>
                   <h3 className="text-lg font-semibold text-yellow-900 sm:flex-1">
