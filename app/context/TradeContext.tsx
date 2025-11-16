@@ -350,7 +350,9 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       relevantTrades = trades.filter(trade => activeSessionIds.has(trade.sessionId));
     }
 
-    const totalTrades = relevantTrades.length;
+    // Only count completed trades (won or lost), not pending trades
+    const completedTrades = relevantTrades.filter(trade => trade.status === 'won' || trade.status === 'lost');
+    const totalTrades = completedTrades.length;
 
     const totalProfit = trades.reduce((sum, trade) => sum + (trade.profitOrLoss > 0 ? trade.profitOrLoss : 0), 0);
     const totalLoss = trades.reduce((sum, trade) => sum + (trade.profitOrLoss < 0 ? Math.abs(trade.profitOrLoss) : 0), 0);
