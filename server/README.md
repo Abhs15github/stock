@@ -53,10 +53,12 @@ cp .env.example .env
 
 4. Edit `.env` if needed (default settings work for local development):
 ```env
-PORT=5000
+PORT=5001
 MONGODB_URI=mongodb://localhost:27017/bbtfinance
 NODE_ENV=development
 ```
+
+**Note:** We use port 5001 instead of 5000 because macOS Control Center uses port 5000 by default, which causes conflicts.
 
 ## Running the Server
 
@@ -70,7 +72,7 @@ npm run dev
 npm start
 ```
 
-The server will start on `http://localhost:5000`
+The server will start on `http://localhost:5001`
 
 ## API Endpoints
 
@@ -122,15 +124,15 @@ You can test the API using curl:
 
 ```bash
 # Health check
-curl http://localhost:5000/api/health
+curl http://localhost:5001/api/health
 
 # Login
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST http://localhost:5001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"hemant","password":"Hemant@122"}'
 
 # Get sessions (replace USER_ID with actual user ID from login response)
-curl http://localhost:5000/api/sessions \
+curl http://localhost:5001/api/sessions \
   -H "x-user-id: user-hemant"
 ```
 
@@ -167,7 +169,16 @@ If you get a MongoDB connection error:
 
 ### Port Already in Use
 
-If port 5000 is already in use, change the `PORT` in your `.env` file and update the frontend API URL accordingly.
+**macOS Control Center Port Conflict:**
+On macOS Monterey (12.0) and later, Apple's AirPlay Receiver uses port 5000 by default. This is why we use port 5001 for the backend server.
+
+If you want to use port 5000, you can disable AirPlay Receiver:
+1. Go to **System Settings** > **General** > **AirDrop & Handoff**
+2. Turn off **AirPlay Receiver**
+3. Change `PORT=5001` back to `PORT=5000` in `/server/.env`
+4. Change `NEXT_PUBLIC_API_URL=http://localhost:5001/api` back to `http://localhost:5000/api` in `/.env.local`
+
+If a different port is needed, change the `PORT` in `/server/.env` and update `NEXT_PUBLIC_API_URL` in the frontend's `/.env.local` accordingly.
 
 ## Production Deployment
 

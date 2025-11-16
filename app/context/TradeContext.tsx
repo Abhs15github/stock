@@ -338,7 +338,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const getTradeStats = () => {
-    const totalTrades = trades.length;
+    // Only count active/live trades (pending trades from active sessions)
+    const activeTrades = trades.filter(trade => trade.status === 'pending');
+    const totalTrades = activeTrades.length;
+
     const totalProfit = trades.reduce((sum, trade) => sum + (trade.profitOrLoss > 0 ? trade.profitOrLoss : 0), 0);
     const totalLoss = trades.reduce((sum, trade) => sum + (trade.profitOrLoss < 0 ? Math.abs(trade.profitOrLoss) : 0), 0);
     const netProfit = totalProfit - totalLoss;
