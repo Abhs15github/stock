@@ -20,7 +20,7 @@ const calculateSessionTargetProfit = (
   }
 
   const baseRisk = 0.06;
-  const fixedWinRate = 0.60;
+  const fixedWinRate = 0.60; // Always use 60% benchmark for aspirational target
   const expectedWins = totalTrades * fixedWinRate;
   const expectedLosses = totalTrades * (1 - fixedWinRate);
 
@@ -441,39 +441,23 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       let adjustedProfit = Number((originalProfit + profitDelta).toFixed(2));
       let adjustedInvestment = originalInvestment;
 
+      // For adjustments, use a flexible approach that doesn't strictly maintain RR ratio
+      // This prevents rounding errors and ensures exact alignment
+      // Small deltas (< $0.50) are always applied directly for precision
+      const isSmallDelta = Math.abs(profitDelta) < 0.5;
+      const isLargeAdjustment = Math.abs(profitDelta) > Math.abs(originalProfit) * 0.5;
+
       if (isWin && adjustedProfit > 0) {
-        const riskRewardRatio =
-          originalInvestment > 0
-            ? Number((originalProfit / originalInvestment).toFixed(6))
-            : 0;
-
-        if (riskRewardRatio > 0) {
-          adjustedInvestment = Number(
-            Math.max(0, adjustedProfit / riskRewardRatio).toFixed(2)
-          );
-          adjustedProfit = Number(
-            (adjustedInvestment * riskRewardRatio).toFixed(2)
-          );
-        }
-      } else if (isLoss && adjustedProfit < 0) {
-        adjustedInvestment = Number(Math.abs(adjustedProfit).toFixed(2));
-        adjustedProfit = -adjustedInvestment;
-      }
-
-      const projectedActualProfit =
-        actualProfit - originalProfit + adjustedProfit;
-      const remainingDelta = Number(
-        (targetProfit - projectedActualProfit).toFixed(2)
-      );
-
-      if (Math.abs(remainingDelta) >= 0.01) {
-        adjustedProfit = Number(
-          (adjustedProfit + remainingDelta).toFixed(2)
-        );
-
-        if (isWin && adjustedProfit > 0) {
+        if (isSmallDelta || isLargeAdjustment) {
+          // For very small deltas (< $0.50) or large adjustments:
+          // Keep original investment, just adjust profit directly
+          // This ensures exact alignment without rounding errors
+          adjustedInvestment = originalInvestment;
+          adjustedProfit = Number((originalProfit + profitDelta).toFixed(2));
+        } else {
+          // Medium adjustment: try to maintain RR ratio
           const riskRewardRatio =
-            adjustedInvestment > 0
+            originalInvestment > 0
               ? Number((originalProfit / originalInvestment).toFixed(6))
               : 0;
 
@@ -485,10 +469,24 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               (adjustedInvestment * riskRewardRatio).toFixed(2)
             );
           }
-        } else if (isLoss && adjustedProfit < 0) {
-          adjustedInvestment = Number(Math.abs(adjustedProfit).toFixed(2));
-          adjustedProfit = -adjustedInvestment;
         }
+      } else if (isLoss && adjustedProfit < 0) {
+        adjustedInvestment = Number(Math.abs(adjustedProfit).toFixed(2));
+        adjustedProfit = -adjustedInvestment;
+      }
+
+      // Check if we need a second adjustment
+      const projectedActualProfit =
+        actualProfit - originalProfit + adjustedProfit;
+      const remainingDelta = Number(
+        (targetProfit - projectedActualProfit).toFixed(2)
+      );
+
+      if (Math.abs(remainingDelta) >= 0.01) {
+        // Apply remaining delta directly to profit (no RR ratio maintenance for corrections)
+        adjustedProfit = Number(
+          (adjustedProfit + remainingDelta).toFixed(2)
+        );
       }
 
       const adjustedPercentage =
@@ -569,7 +567,19 @@ const createNextPendingTrade = async (
         targetAccuracy,
         riskRewardRatio
       );
-      const targetBalance = sessionCapital + targetProfit;
+
+      // For low ITM scenarios (≤25%), use a more conservative target balance for stake calculation
+      // This prevents over-aggressive staking while keeping the display target aspirational
+      let stakingTargetBalance: number;
+
+      if (targetAccuracy <= 25) {
+        // Use a break-even target: just preserve the initial capital
+        // This ensures conservative staking that allows completing all trades
+        stakingTargetBalance = sessionCapital * 1.05; // Aim to just break even + small buffer
+      } else {
+        // For normal ITM (>25%), use the full aspirational target
+        stakingTargetBalance = sessionCapital + targetProfit;
+      }
 
       const remainingTrades = targetTrades - completedTrades.length;
       const winsNeeded = Math.max(0, requiredWins - wins);
@@ -584,7 +594,7 @@ const createNextPendingTrade = async (
       }
 
       const requiredBalanceTable = buildRequiredBalanceTable(
-        targetBalance,
+        stakingTargetBalance,
         riskRewardRatio,
         targetTrades,
         requiredWins

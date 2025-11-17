@@ -138,16 +138,8 @@ export default function SessionDetailPage() {
       return 0;
     }
 
-    // REFERENCE WEBSITE FORMULA: Uses FIXED 60% win rate for TARGET calculation
-    // This gives an aspirational target based on good performance benchmark
-    // Formula: FinalBalance = InitialBalance × (1 + RR × r)^wins × (1 - r)^losses
-    // Where:
-    //   r = 6% base risk per trade
-    //   Assumes 60% win rate: 6 wins, 4 losses out of 10 trades
-    //   This gives constant 2.1079× multiplier (110.79% return)
-
     const baseRisk = 0.06; // 6% base risk per trade for target calculation
-    const fixedWinRate = 0.60; // Fixed 60% win rate benchmark for aspirational target
+    const fixedWinRate = 0.60; // Always use 60% benchmark for aspirational target
     const expectedWins = totalTrades * fixedWinRate;
     const expectedLosses = totalTrades * (1 - fixedWinRate);
 
@@ -200,6 +192,35 @@ export default function SessionDetailPage() {
     () => (session ? calculateTargetProfit(session) : 0),
     [session, calculateTargetProfit]
   );
+
+  // Auto-align profit if target is reached but not yet aligned
+  useEffect(() => {
+    const autoAlignIfNeeded = async () => {
+      if (!session || !sessionTrades.length) return;
+
+      const completedTrades = sessionTrades.filter((t) => t.status !== "pending");
+      if (completedTrades.length === 0) return;
+
+      const wins = completedTrades.filter((t) => t.status === "won").length;
+      const requiredWins = Math.ceil(session.totalTrades * (session.accuracy / 100));
+      const hasReachedTargetItm = requiredWins > 0 && wins >= requiredWins;
+
+      if (!hasReachedTargetItm) return;
+
+      // Check if already aligned
+      const actualProfit = completedTrades.reduce((sum, t) => sum + t.profitOrLoss, 0);
+      const profitDelta = Math.abs(targetProfit - actualProfit);
+
+      // If not aligned (delta > $0.01), trigger alignment
+      if (profitDelta > 0.01) {
+        console.log("Auto-aligning session profit...");
+        await alignSessionProfit(session.id, targetProfit);
+        await reloadTrades();
+      }
+    };
+
+    autoAlignIfNeeded();
+  }, [session, sessionTrades, targetProfit, alignSessionProfit, reloadTrades]);
 
   const handleRecordResult = useCallback(
     async (tradeId: string, result: "won" | "lost") => {
@@ -277,11 +298,9 @@ export default function SessionDetailPage() {
             requiredWins > 0 && winsAfterUpdate >= requiredWins;
 
           if (hasReachedTargetAfterUpdate || hasReachedTargetItm) {
-            const alignmentTarget = hasReachedTargetAfterUpdate
-              ? targetProfit
-              : updatedNetProfit;
-
-            await alignSessionProfit(session.id, alignmentTarget);
+            // Always align to the target profit for consistency
+            // This ensures Net Profit = Target Net Profit when goal is achieved
+            await alignSessionProfit(session.id, targetProfit);
             await reloadTrades();
 
             if (hasReachedTargetAfterUpdate) {

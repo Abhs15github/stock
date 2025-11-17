@@ -103,9 +103,8 @@ export default function SessionsPage() {
     const targetITM = session.accuracy || 30; // Use session's accuracy as target ITM
 
     // Calculate Target Profit using the SAME formula as session detail page
-    // REFERENCE WEBSITE FORMULA: Uses FIXED 60% win rate for TARGET calculation
     const baseRisk = 0.06; // 6% base risk per trade for target calculation
-    const fixedWinRate = 0.60; // Fixed 60% win rate benchmark for aspirational target
+    const fixedWinRate = 0.60; // Always use 60% benchmark for aspirational target
     const expectedWins = targetTrades * fixedWinRate;
     const expectedLosses = targetTrades * (1 - fixedWinRate);
 
