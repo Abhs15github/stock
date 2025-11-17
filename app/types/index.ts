@@ -72,7 +72,7 @@ export interface TradeContextType {
     targetTrades: number,
     targetAccuracy: number
   ) => Promise<{ success: boolean; message: string }>;
-  getTradeStats: () => {
+  getTradeStats: (sessions?: TradingSession[]) => {
     totalTrades: number;
     totalProfit: number;
     totalLoss: number;

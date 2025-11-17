@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Trade, TradeContextType, Session } from '../types';
+import { Trade, TradeContextType, TradingSession } from '../types';
 import { apiClient } from '../utils/api';
 import { useAuth } from './AuthContext';
 import { storageUtils } from '../utils/storage';
@@ -337,7 +337,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const getTradeStats = (sessions?: Session[]) => {
+  const getTradeStats = (sessions?: TradingSession[]) => {
     // If sessions are provided, only count trades from active sessions
     let relevantTrades = trades;
 
@@ -347,7 +347,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           .filter(session => session.status === 'active')
           .map(session => session.id)
       );
-      relevantTrades = trades.filter(trade => activeSessionIds.has(trade.sessionId));
+      relevantTrades = trades.filter(trade => trade.sessionId && activeSessionIds.has(trade.sessionId));
     }
 
     // Only count completed trades (won or lost), not pending trades
