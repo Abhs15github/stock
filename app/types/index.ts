@@ -77,6 +77,7 @@ export interface TradeContextType {
     totalProfit: number;
     totalLoss: number;
     profitPercentage: number;
+    winRate: number;
     activeInvestment: number;
   };
   getSessionTrades: (sessionId: string) => Trade[];

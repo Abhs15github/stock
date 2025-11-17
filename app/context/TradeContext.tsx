@@ -354,6 +354,10 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const completedTrades = relevantTrades.filter(trade => trade.status === 'won' || trade.status === 'lost');
     const totalTrades = completedTrades.length;
 
+    // Calculate win rate based on completed trades from active sessions only
+    const wonTrades = completedTrades.filter(trade => trade.status === 'won').length;
+    const winRate = totalTrades > 0 ? (wonTrades / totalTrades) * 100 : 0;
+
     const totalProfit = trades.reduce((sum, trade) => sum + (trade.profitOrLoss > 0 ? trade.profitOrLoss : 0), 0);
     const totalLoss = trades.reduce((sum, trade) => sum + (trade.profitOrLoss < 0 ? Math.abs(trade.profitOrLoss) : 0), 0);
     const netProfit = totalProfit - totalLoss;
@@ -366,6 +370,7 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       totalProfit,
       totalLoss,
       profitPercentage,
+      winRate,
       activeInvestment,
     };
   };

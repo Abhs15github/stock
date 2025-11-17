@@ -99,9 +99,9 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Win Rate"
-            value={`${tradeStats.profitPercentage >= 0 ? '+' : ''}${tradeStats.profitPercentage.toFixed(1)}%`}
+            value={`${tradeStats.winRate.toFixed(1)}%`}
             icon={TrendingUp}
-            color={tradeStats.profitPercentage >= 0 ? "green" : "red"}
+            color={tradeStats.winRate >= 50 ? "green" : "red"}
             subtitle=""
           />
         </motion.div>
