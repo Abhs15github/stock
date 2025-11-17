@@ -482,7 +482,18 @@ export default function SessionDetailPage() {
     return null;
   }
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* Full Screen Loader Overlay */}
+      {recordingTrade && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="text-center max-w-xs">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3 sm:mb-4"></div>
+            <p className="text-base sm:text-lg font-semibold text-gray-800">Processing trade result...</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">Please wait</p>
+          </div>
+        </div>
+      )}
+
       <Header />
 
       <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
@@ -801,19 +812,8 @@ export default function SessionDetailPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 relative"
+                className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6"
               >
-                {/* Blur Overlay with Loader when processing - Optimized for mobile */}
-                {recordingTrade && (
-                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10 p-4">
-                    <div className="text-center max-w-xs">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3 sm:mb-4"></div>
-                      <p className="text-base sm:text-lg font-semibold text-gray-800">Processing trade result...</p>
-                      <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2">Please wait</p>
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
                   <div className="text-2xl leading-none">⚠️</div>
                   <h3 className="text-lg font-semibold text-yellow-900 sm:flex-1">
