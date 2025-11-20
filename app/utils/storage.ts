@@ -32,10 +32,19 @@ export const storageUtils = {
   getCurrentUser: (): User | null => {
     if (typeof window === 'undefined') return null;
     try {
+      // Check if localStorage is available (mobile Safari private mode)
+      if (!window.localStorage) {
+        return null;
+      }
       const user = localStorage.getItem(CURRENT_USER_KEY);
       return user ? JSON.parse(user) : null;
     } catch (error) {
-      console.error('Error getting current user from storage:', error);
+      // Handle QuotaExceededError or other storage errors gracefully
+      if (error instanceof DOMException) {
+        console.warn('Storage access error (may be private mode):', error.name);
+      } else {
+        console.error('Error getting current user from storage:', error);
+      }
       return null;
     }
   },
@@ -43,13 +52,23 @@ export const storageUtils = {
   setCurrentUser: (user: User | null): void => {
     if (typeof window === 'undefined') return;
     try {
+      // Check if localStorage is available
+      if (!window.localStorage) {
+        console.warn('localStorage not available (may be private mode)');
+        return;
+      }
       if (user) {
         localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
       } else {
         localStorage.removeItem(CURRENT_USER_KEY);
       }
     } catch (error) {
-      console.error('Error setting current user in storage:', error);
+      // Handle QuotaExceededError or other storage errors gracefully
+      if (error instanceof DOMException) {
+        console.warn('Storage write error (may be private mode or quota exceeded):', error.name);
+      } else {
+        console.error('Error setting current user in storage:', error);
+      }
     }
   },
 
@@ -120,19 +139,34 @@ export const storageUtils = {
   setSessionExpiry: (expiryTime: number): void => {
     if (typeof window === 'undefined') return;
     try {
+      if (!window.localStorage) {
+        console.warn('localStorage not available');
+        return;
+      }
       localStorage.setItem(SESSION_EXPIRY_KEY, expiryTime.toString());
     } catch (error) {
-      console.error('Error setting session expiry:', error);
+      if (error instanceof DOMException) {
+        console.warn('Storage write error:', error.name);
+      } else {
+        console.error('Error setting session expiry:', error);
+      }
     }
   },
 
   getSessionExpiry: (): number | null => {
     if (typeof window === 'undefined') return null;
     try {
+      if (!window.localStorage) {
+        return null;
+      }
       const expiry = localStorage.getItem(SESSION_EXPIRY_KEY);
       return expiry ? parseInt(expiry) : null;
     } catch (error) {
-      console.error('Error getting session expiry:', error);
+      if (error instanceof DOMException) {
+        console.warn('Storage access error:', error.name);
+      } else {
+        console.error('Error getting session expiry:', error);
+      }
       return null;
     }
   },
@@ -140,11 +174,20 @@ export const storageUtils = {
   isSessionExpired: (): boolean => {
     if (typeof window === 'undefined') return false;
     try {
+      if (!window.localStorage) {
+        // If localStorage is not available, consider session expired
+        return true;
+      }
       const expiry = storageUtils.getSessionExpiry();
-      if (!expiry) return false;
+      if (!expiry) return true; // No expiry means session is invalid
       return Date.now() > expiry;
     } catch (error) {
-      console.error('Error checking session expiry:', error);
+      if (error instanceof DOMException) {
+        console.warn('Storage access error:', error.name);
+      } else {
+        console.error('Error checking session expiry:', error);
+      }
+      // On error, don't expire session - might be temporary mobile issue
       return false;
     }
   },

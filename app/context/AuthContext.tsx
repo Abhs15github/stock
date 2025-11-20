@@ -32,6 +32,7 @@ const HARDCODED_USERS: Array<{
 ];
 
 const SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const SESSION_REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh session every 5 minutes on activity
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -47,58 +48,183 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Load user on mount and handle session restoration
   useEffect(() => {
-    try {
-      const storedUser = storageUtils.getCurrentUser();
-      if (!storedUser) {
-        apiClient.setUserId(null);
+    const loadUser = () => {
+      try {
+        const storedUser = storageUtils.getCurrentUser();
+        if (!storedUser) {
+          apiClient.setUserId(null);
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        const matchedUser = HARDCODED_USERS.find(
+          (hardUser) => hardUser.id === storedUser.id
+        );
+
+        if (!matchedUser) {
+          apiClient.setUserId(null);
+          storageUtils.setCurrentUser(null);
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if session is expired
+        if (storageUtils.isSessionExpired()) {
+          apiClient.setUserId(null);
+          storageUtils.setCurrentUser(null);
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
+        const hydratedUser: User = {
+          id: matchedUser.id,
+          email: `${matchedUser.username}@secure.local`,
+          password: matchedUser.password,
+          name: matchedUser.displayName,
+          createdAt: storedUser.createdAt ?? new Date().toISOString(),
+        };
+
+        // Ensure API client has the active user ID for subsequent requests
+        apiClient.setUserId(hydratedUser.id);
+
+        // Refresh session expiry on successful load
+        storageUtils.setSessionExpiry(Date.now() + SESSION_DURATION_MS);
+
+        setUser(hydratedUser);
+      } catch (error) {
+        console.error('Error loading current user:', error);
+        // Don't clear user on storage errors - might be temporary mobile issue
         setUser(null);
-        return;
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      const matchedUser = HARDCODED_USERS.find(
-        (hardUser) => hardUser.id === storedUser.id
-      );
-
-      if (!matchedUser || storageUtils.isSessionExpired()) {
-        apiClient.setUserId(null);
-        storageUtils.setCurrentUser(null);
-        setUser(null);
-        return;
-      }
-
-      const hydratedUser: User = {
-        id: matchedUser.id,
-        email: `${matchedUser.username}@secure.local`,
-        password: matchedUser.password,
-        name: matchedUser.displayName,
-        createdAt: storedUser.createdAt ?? new Date().toISOString(),
-      };
-
-      // Ensure API client has the active user ID for subsequent requests
-      apiClient.setUserId(hydratedUser.id);
-
-      setUser(hydratedUser);
-    } catch (error) {
-      console.error('Error loading current user:', error);
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+    loadUser();
   }, []);
 
-  // === COMMENTED OUT FOR LOCAL DEVELOPMENT ===
-  // Check session expiry every minute
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     if (user && storageUtils.isSessionExpired()) {
-  //       setUser(null);
-  //       storageUtils.setCurrentUser(null);
-  //     }
-  //   }, 60000); // Check every minute
+  // Refresh session on user activity and check expiry
+  useEffect(() => {
+    if (!user) return;
 
-  //   return () => clearInterval(interval);
-  // }, [user]);
+    let lastActivityTime = Date.now();
+    let refreshTimer: NodeJS.Timeout | null = null;
+
+    // Function to refresh session expiry
+    const refreshSession = () => {
+      try {
+        if (user) {
+          // Check expiry first - if expired, don't refresh
+          const isExpired = storageUtils.isSessionExpired();
+          if (!isExpired) {
+            storageUtils.setSessionExpiry(Date.now() + SESSION_DURATION_MS);
+            lastActivityTime = Date.now();
+          }
+        }
+      } catch (error) {
+        // Don't log errors for temporary storage issues - might be mobile browser quirk
+        if (error instanceof DOMException && error.name !== 'QuotaExceededError') {
+          console.warn('Error refreshing session (non-critical):', error.name);
+        }
+      }
+    };
+
+    // Refresh session periodically if user is active
+    const setupRefreshTimer = () => {
+      if (refreshTimer) clearInterval(refreshTimer);
+      
+      refreshTimer = setInterval(() => {
+        const timeSinceActivity = Date.now() - lastActivityTime;
+        
+        // Only refresh if user was active in the last 10 minutes
+        if (timeSinceActivity < 10 * 60 * 1000) {
+          refreshSession();
+        }
+      }, SESSION_REFRESH_INTERVAL);
+    };
+
+    // Track user activity
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    const handleActivity = () => {
+      lastActivityTime = Date.now();
+      refreshSession();
+    };
+
+    // Add activity listeners
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    // Handle visibility change (when user returns to tab/app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Check if session is still valid when user returns
+        try {
+          if (storageUtils.isSessionExpired()) {
+            setUser(null);
+            storageUtils.setCurrentUser(null);
+            apiClient.setUserId(null);
+          } else {
+            // Refresh session when user returns
+            refreshSession();
+          }
+        } catch (error) {
+          console.error('Error checking session on visibility change:', error);
+        }
+      }
+    };
+
+    // Handle page focus (mobile browsers)
+    const handleFocus = () => {
+      try {
+        if (storageUtils.isSessionExpired()) {
+          setUser(null);
+          storageUtils.setCurrentUser(null);
+          apiClient.setUserId(null);
+        } else {
+          refreshSession();
+        }
+      } catch (error) {
+        console.error('Error checking session on focus:', error);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    // Initial refresh
+    refreshSession();
+    setupRefreshTimer();
+
+    // Check session expiry periodically
+    const expiryCheckInterval = setInterval(() => {
+      try {
+        if (user && storageUtils.isSessionExpired()) {
+          setUser(null);
+          storageUtils.setCurrentUser(null);
+          apiClient.setUserId(null);
+        }
+      } catch (error) {
+        console.error('Error checking session expiry:', error);
+      }
+    }, 60000); // Check every minute
+
+    // Cleanup
+    return () => {
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      if (refreshTimer) clearInterval(refreshTimer);
+      clearInterval(expiryCheckInterval);
+    };
+  }, [user]);
 
   const register = async (_email: string, _password: string, _name: string): Promise<{ success: boolean; message: string }> => {
     return {
