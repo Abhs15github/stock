@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '../components/Header';
 import { StatCard } from '../components/StatCard';
 import { PageLoader } from '../components/LoadingSpinner';
+import { PerformanceOverviewWidget } from '../components/PerformanceOverviewWidget';
 import { motion } from 'framer-motion';
 import {
   Plus,
@@ -105,6 +106,11 @@ export default function DashboardPage() {
             subtitle=""
           />
         </motion.div>
+
+        {/* Performance Overview Widget */}
+        {trades.length > 0 && (
+          <PerformanceOverviewWidget sessions={sessions} trades={trades} />
+        )}
 
         {/* Quick Actions */}
         <motion.div
