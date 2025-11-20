@@ -165,6 +165,27 @@ export default function SessionsPage() {
     return metrics.netProfit;
   };
 
+  // Check if session has achieved its target
+  const checkIfTargetReached = (session: any) => {
+    const trades = getSessionTrades(session.id);
+    const completedTrades = trades.filter((t: any) => t.status === 'won' || t.status === 'lost');
+
+    if (completedTrades.length === 0) return false;
+
+    const wins = completedTrades.filter((t: any) => t.status === 'won').length;
+    const requiredWins = Math.ceil(session.totalTrades * (session.accuracy / 100));
+
+    const netProfit = completedTrades.reduce((sum: number, trade: any) => sum + trade.profitOrLoss, 0);
+    const currentBalance = session.capital + netProfit;
+    const metrics = calculateSessionMetrics(session);
+    const targetBalance = session.capital + metrics.targetNetProfit;
+
+    const hitTargetProfit = currentBalance >= targetBalance && completedTrades.length > 0;
+    const hitTargetItm = requiredWins > 0 && wins >= requiredWins;
+
+    return hitTargetProfit || hitTargetItm;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -241,11 +262,11 @@ export default function SessionsPage() {
                 .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                 .map((session, index) => {
                 const progress = calculateProgress(session);
-                const winRate = calculateWinRate(session);
                 const targetProfit = calculateTargetProfit(session);
                 const currentBalance = calculateCurrentBalance(session);
                 const netProfit = getNetProfit(session);
                 const metrics = calculateSessionMetrics(session);
+                const isTargetReached = checkIfTargetReached(session);
 
                 return (
                   <motion.div
@@ -253,28 +274,54 @@ export default function SessionsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="bg-white rounded-lg sm:rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 cursor-pointer relative overflow-hidden group active:scale-[0.98]"
+                    className={`relative overflow-hidden cursor-pointer group active:scale-[0.98] transition-all duration-300 rounded-lg sm:rounded-xl ${
+                      isTargetReached
+                        ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-50 border-2 border-amber-300 hover:border-amber-400 shadow-lg hover:shadow-2xl shadow-amber-200/50'
+                        : 'bg-white border border-gray-200 hover:border-blue-300 hover:shadow-xl'
+                    }`}
                     onClick={() => router.push(`/sessions/${session.id}`)}
                   >
                     {/* Status Indicator Bar */}
                     <div className={`absolute top-0 left-0 right-0 h-1 ${
-                      session.status === 'active' ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gray-300'
+                      isTargetReached
+                        ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400'
+                        : session.status === 'active'
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                          : 'bg-gray-300'
                     }`}></div>
+
+                    {/* Golden Shimmer Effect for Target Reached */}
+                    {isTargetReached && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-200/30 to-transparent animate-shimmer pointer-events-none"></div>
+                    )}
 
                     <div className="p-4 sm:p-5 lg:p-6">
                       {/* Header Section */}
                       <div className="flex items-start justify-between mb-3 sm:mb-4">
                         <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
-                            session.status === 'active'
-                              ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                              : 'bg-gray-400'
-                          } shadow-lg`}>
-                            <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ${
+                            isTargetReached
+                              ? 'bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-500 ring-2 ring-amber-300 ring-offset-2'
+                              : session.status === 'active'
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                                : 'bg-gray-400'
+                          }`}>
+                            {isTargetReached ? (
+                              <Target className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                            ) : (
+                              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1 truncate">{session.name}</h3>
+                            <h3 className={`text-base sm:text-lg font-bold mb-1 truncate ${
+                              isTargetReached ? 'text-amber-900' : 'text-gray-900'
+                            }`}>{session.name}</h3>
                             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                              {isTargetReached && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-sm">
+                                  🎯 Target Achieved
+                                </span>
+                              )}
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                 session.status === 'active'
                                   ? 'bg-green-100 text-green-800'
