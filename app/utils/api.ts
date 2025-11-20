@@ -1,12 +1,25 @@
 // API client for backend server
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+// For localhost, use Next.js API routes. For production, use external API URL
+const getApiBaseUrl = (): string => {
+  // If we're in the browser and on localhost, use Next.js API routes
+  if (typeof window !== 'undefined') {
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname === '';
+    
+    if (isLocalhost) {
+      return '/api';
+    }
+  }
+  
+  // For production or when explicitly set, use the environment variable
+  return process.env.NEXT_PUBLIC_API_URL || '/api';
+};
 
 class APIClient {
-  private baseURL: string;
   private userId: string | null = null;
 
-  constructor(baseURL: string) {
-    this.baseURL = baseURL;
+  constructor() {
 
     // Load userId from localStorage if available
     if (typeof window !== 'undefined') {
@@ -28,6 +41,10 @@ class APIClient {
     }
   }
 
+  private getBaseURL(): string {
+    return getApiBaseUrl();
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -47,7 +64,8 @@ class APIClient {
       headers.set('x-user-id', this.userId);
     }
 
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
+    const baseURL = this.getBaseURL();
+    const response = await fetch(`${baseURL}${endpoint}`, {
       ...options,
       headers,
     });
@@ -168,4 +186,4 @@ class APIClient {
   }
 }
 
-export const apiClient = new APIClient(API_BASE_URL);
+export const apiClient = new APIClient();

@@ -561,3 +561,4 @@ function calculateMaxDrawdown(trades: Trade[]): number {
 
 
 
+

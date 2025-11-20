@@ -441,34 +441,38 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       let adjustedProfit = Number((originalProfit + profitDelta).toFixed(2));
       let adjustedInvestment = originalInvestment;
 
-      // For adjustments, use a flexible approach that doesn't strictly maintain RR ratio
-      // This prevents rounding errors and ensures exact alignment
-      // Small deltas (< $0.50) are always applied directly for precision
+      // For adjustments, maintain the risk-reward ratio to prevent calculation errors
+      // Small deltas (< $0.50) can be applied directly for precision
       const isSmallDelta = Math.abs(profitDelta) < 0.5;
-      const isLargeAdjustment = Math.abs(profitDelta) > Math.abs(originalProfit) * 0.5;
 
       if (isWin && adjustedProfit > 0) {
-        if (isSmallDelta || isLargeAdjustment) {
-          // For very small deltas (< $0.50) or large adjustments:
-          // Keep original investment, just adjust profit directly
-          // This ensures exact alignment without rounding errors
-          adjustedInvestment = originalInvestment;
-          adjustedProfit = Number((originalProfit + profitDelta).toFixed(2));
-        } else {
-          // Medium adjustment: try to maintain RR ratio
-          const riskRewardRatio =
-            originalInvestment > 0
-              ? Number((originalProfit / originalInvestment).toFixed(6))
-              : 0;
+        // Calculate the original risk-reward ratio
+        const originalRRRatio = originalInvestment > 0
+          ? Number((originalProfit / originalInvestment).toFixed(6))
+          : 0;
 
-          if (riskRewardRatio > 0) {
+        if (originalRRRatio > 0) {
+          if (isSmallDelta) {
+            // For very small deltas, apply directly to profit and adjust investment to maintain RR
             adjustedInvestment = Number(
-              Math.max(0, adjustedProfit / riskRewardRatio).toFixed(2)
+              Math.max(0, adjustedProfit / originalRRRatio).toFixed(2)
             );
             adjustedProfit = Number(
-              (adjustedInvestment * riskRewardRatio).toFixed(2)
+              (adjustedInvestment * originalRRRatio).toFixed(2)
+            );
+          } else {
+            // For larger adjustments, maintain RR ratio by adjusting both investment and profit
+            adjustedInvestment = Number(
+              Math.max(0, adjustedProfit / originalRRRatio).toFixed(2)
+            );
+            adjustedProfit = Number(
+              (adjustedInvestment * originalRRRatio).toFixed(2)
             );
           }
+        } else {
+          // If no original RR ratio, keep investment and adjust profit
+          adjustedInvestment = originalInvestment;
+          adjustedProfit = Number((originalProfit + profitDelta).toFixed(2));
         }
       } else if (isLoss && adjustedProfit < 0) {
         adjustedInvestment = Number(Math.abs(adjustedProfit).toFixed(2));
@@ -483,10 +487,77 @@ export const TradeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
 
       if (Math.abs(remainingDelta) >= 0.01) {
-        // Apply remaining delta directly to profit (no RR ratio maintenance for corrections)
-        adjustedProfit = Number(
+        // Apply remaining delta while maintaining RR ratio
+        const newAdjustedProfit = Number(
           (adjustedProfit + remainingDelta).toFixed(2)
         );
+        
+        if (isWin && adjustedInvestment > 0) {
+          // Calculate the original risk-reward ratio from the trade
+          const originalRRRatio = originalInvestment > 0 
+            ? originalProfit / originalInvestment 
+            : 0;
+          
+          if (originalRRRatio > 0) {
+            // Maintain RR ratio by adjusting investment proportionally
+            adjustedInvestment = Number(
+              Math.max(0, newAdjustedProfit / originalRRRatio).toFixed(2)
+            );
+            adjustedProfit = Number(
+              (adjustedInvestment * originalRRRatio).toFixed(2)
+            );
+          } else {
+            adjustedProfit = newAdjustedProfit;
+          }
+        } else {
+          adjustedProfit = newAdjustedProfit;
+        }
+      }
+
+      // Final check: Verify we've reached the target, and if not, apply a small final adjustment
+      const finalActualProfit = actualProfit - originalProfit + adjustedProfit;
+      const finalDelta = Number((targetProfit - finalActualProfit).toFixed(2));
+      
+      // If there's still a small delta (< $1), apply it directly to profit for exact alignment
+      // This ensures we reach the target while maintaining RR ratio as closely as possible
+      if (Math.abs(finalDelta) >= 0.01 && Math.abs(finalDelta) < 1.0) {
+        if (isWin && adjustedInvestment > 0) {
+          const originalRRRatio = originalInvestment > 0 
+            ? originalProfit / originalInvestment 
+            : 0;
+          
+          if (originalRRRatio > 0) {
+            // Apply small delta and recalculate to maintain RR ratio
+            const finalAdjustedProfit = Number((adjustedProfit + finalDelta).toFixed(2));
+            adjustedInvestment = Number(
+              Math.max(0, finalAdjustedProfit / originalRRRatio).toFixed(2)
+            );
+            adjustedProfit = Number(
+              (adjustedInvestment * originalRRRatio).toFixed(2)
+            );
+          } else {
+            adjustedProfit = Number((adjustedProfit + finalDelta).toFixed(2));
+          }
+        } else {
+          adjustedProfit = Number((adjustedProfit + finalDelta).toFixed(2));
+        }
+      } else if (Math.abs(finalDelta) >= 1.0) {
+        // If delta is large, maintain RR ratio strictly
+        if (isWin && adjustedInvestment > 0) {
+          const originalRRRatio = originalInvestment > 0 
+            ? originalProfit / originalInvestment 
+            : 0;
+          
+          if (originalRRRatio > 0) {
+            // Recalculate to maintain exact RR ratio
+            adjustedInvestment = Number(
+              Math.max(0, adjustedProfit / originalRRRatio).toFixed(2)
+            );
+            adjustedProfit = Number(
+              (adjustedInvestment * originalRRRatio).toFixed(2)
+            );
+          }
+        }
       }
 
       const adjustedPercentage =
